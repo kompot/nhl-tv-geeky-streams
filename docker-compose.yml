@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  nhltv:
+    container_name: "nhltv"
+    stdin_open: true
+    tty: true
+    build: .
+    working_dir: /usr/src/app
+    # environment:
+    #   env_file: .env
+    #   NODE_ENV: development
+    volumes:
+      - .:/usr/src/app
+      - ./video:/usr/src/app/video
+      - node_modules:/usr/src/app/node_modules
+
+volumes:
+  node_modules:
+    # driver: local  # is already local by default

@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:17.10
 
 # install node
 RUN apt-get update
@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y yarn
 
 # install livestreamer
 RUN apt-get install -y python-pip
-RUN pip install livestreamer
-RUN pip install pycrypto
+RUN pip install streamlink
+RUN pip install pycryptodome
 
 RUN mkdir /usr/src/app
 WORKDIR /usr/src/app/
@@ -26,5 +26,4 @@ RUN yarn install
 
 ADD . /usr/src/app/
 
-# EXPOSE 3000
 CMD [ "yarn", "start" ]

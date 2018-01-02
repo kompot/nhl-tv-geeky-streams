@@ -139,7 +139,7 @@ const main = async () => {
     `--http-cookie`,
     "Authorization=" + auth.authHeader,
     `--http-cookie`,
-    "mediaAuth_v2=" + mediaAuth,
+    SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
     // '--hls-live-edge',
     // '1000',
     url,

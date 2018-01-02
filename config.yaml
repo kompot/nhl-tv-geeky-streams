@@ -10,6 +10,9 @@ password:
 # everything below is NOT working yet
 # ===================================
 
+# do not jump into the middle of a game, always start from beginning
+playLiveGamesFromStart: true
+
 # set your team, show all games day by day in case it's not set
 favouriteTeams:
 #  - WSH

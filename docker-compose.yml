@@ -12,6 +12,8 @@ services:
     #   NODE_ENV: development
     volumes:
       - .:/usr/src/app
+      # logs, session data
+      - ./tmp:/usr/src/app/tmp
       - ./video:/usr/src/app/video
       - node_modules:/usr/src/app/node_modules
 

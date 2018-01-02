@@ -17,6 +17,10 @@
   version "4.14.91"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.91.tgz#794611b28056d16b5436059c6d800b39d573cd3a"
 
+"@types/luxon@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@types/luxon/-/luxon-0.2.0.tgz#e907d5be68f53bbc2b65414b76d52c8933789f22"
+
 "@types/node@*":
   version "8.5.2"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-8.5.2.tgz#83b8103fa9a2c2e83d78f701a9aa7c9539739aa5"
@@ -283,6 +287,10 @@ js-yaml@^3.10.0:
 lodash@^4.17.4, lodash@^4.3.0:
   version "4.17.4"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.4.tgz#78203a4d1c328ae1d86dca6460e369b57f4055ae"
+
+luxon@^0.2.11:
+  version "0.2.11"
+  resolved "https://registry.yarnpkg.com/luxon/-/luxon-0.2.11.tgz#ac3a3d39e2d169ec1e894b73c595264cbfb45671"
 
 m3u8-parser@^4.0.0:
   version "4.0.0"

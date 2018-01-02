@@ -37,6 +37,11 @@ enum MediaFeedType {
 }
 
 enum MediaState {
+  // live
+  MediaOn = "MEDIA_ON",
+  // future, has not started
+  MediaOff = "MEDIA_OFF",
+  // has finished
   MediaArchive = "MEDIA_ARCHIVE",
 }
 

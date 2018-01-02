@@ -1,7 +1,7 @@
 import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import axios from "axios";
-import * as cookie from "cookie";
+
 import * as m3u8Parser from 'm3u8-parser';
 import * as _ from 'lodash';
 import { spawn } from 'child_process';
@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import { NhlStatsApi, EpgTitle } from "./nhlStatsApi";
 import {
   NhlMfApi,
+  NhlMfApiBaseUrl,
   PLAYBACK_SCENARIO,
   FORMAT,
   Response,
@@ -18,23 +19,17 @@ import {
   CDN,
   SESSION_ATTRIBUTE_NAME
 } from "./nhlMfApi";
-import { NhlUserApi, USER_IDENTITY_TYPE } from "./nhlUserApi";
+
+import { getAuthSession } from './auth';
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: "https://statsapi.web.nhl.com/api/v1"
 });
-const userApi = axiosRestyped.create<NhlUserApi>({
-  baseURL: "https://user.svc.nhl.com"
-});
 const mfApi = axiosRestyped.create<NhlMfApi>({
-  baseURL: "https://mf.svc.nhl.com"
+  baseURL: NhlMfApiBaseUrl
 });
 
 var config = yaml.safeLoad(fs.readFileSync('./config.yaml'))
-
-// NOTE: This token is from the meta tag "control_plane_client_token" on https://www.nhl.com/login
-const CLIENT_TOKEN =
-  "d2ViX25obC12MS4wLjA6MmQxZDg0NmVhM2IxOTRhMThlZjQwYWM5ZmJjZTk3ZTM=";
 
 const main = async () => {
   const { data: { dates } } = await statsApi
@@ -42,7 +37,7 @@ const main = async () => {
       url: "/schedule",
       params: {
         startDate: "2017-12-30",
-        endDate: "2017-12-30",
+        endDate: "2018-01-02",
         expand: "schedule.game.content.media.epg"
       }
     });
@@ -74,7 +69,8 @@ const main = async () => {
     .items.map(epgItem => ({
       value: epgItem.eventId + "|" + epgItem.mediaPlaybackId + "|" + epgItem.mediaFeedType + "|" + epgItem.callLetters,
       name: epgItem.mediaFeedType + ", " + epgItem.callLetters
-    }))
+    }));
+
   const questionNameFeed = 'feed';
 
   const questionsFeed: inquirer.Question[] = [
@@ -89,80 +85,22 @@ const main = async () => {
 
   const feedSelected = await inquirer.prompt(questionsFeed);
 
-  feedSelected[questionNameFeed]
-
   const [eventId, mediaPlaybackId, mediaFeedType, callLetters] = feedSelected[questionNameFeed].split('|');
 
-  const { data: { access_token } } = await userApi.post(
-    "/oauth/token?grant_type=client_credentials",
-    null,
-    {
-      headers: {
-        Authorization: "Basic " + CLIENT_TOKEN
-      }
-    }
-  );
-  console.log("_____ access_token", access_token);
-  const r = await userApi.post(
-    "/v2/user/identity",
-    {
-      email: {
-        address: config.email
-      },
-      type: USER_IDENTITY_TYPE.EmailPassword,
-      password: {
-        value: config.password
-      }
-    },
-    {
-      headers: {
-        Authorization: access_token
-      }
-    }
-  );
-  const authorizationCookie = r.headers["set-cookie"]
-    .map(cookie.parse)
-    .find(ck => ck.Authorization);
-  if (!authorizationCookie) {
-    throw new Error("Authorization cookie was not found.");
-  }
-
-  console.log(
-    "_____ authorizationCookieValue",
-    authorizationCookie.Authorization
-  );
-
-  const r2 = await mfApi.request({
-    url: "/ws/media/mf/v2.4/stream",
-    params: {
-      eventId,
-      format: FORMAT.JSON,
-      subject: EpgTitle.NHLTV
-    },
-    headers: {
-      Authorization: authorizationCookie.Authorization
-    }
-  });
-
-  if (r2.data.status_code !== STATUS_CODE.OK) {
-    throw new Error(r2.data.status_message);
-  }
-
-  const sessionKey = (r2.data as Response.SessionKey).session_key;
-  console.log('_____ sessionKey', sessionKey);
+  const auth = await getAuthSession(config.email, config.password, eventId);
 
   const r1 = await mfApi.request({
     url: "/ws/media/mf/v2.4/stream",
     params: {
       contentId: mediaPlaybackId,
       playbackScenario: PLAYBACK_SCENARIO.HTTP_CLOUD_WIRED_60,
-      sessionKey: sessionKey,
+      sessionKey: auth.sessionKey,
       auth: "response",
       format: FORMAT.JSON,
       cdnName: CDN.AKAMAI
     },
     headers: {
-      Authorization: authorizationCookie.Authorization
+      Authorization: auth.authHeader
     }
   });
   // console.log(
@@ -189,9 +127,9 @@ const main = async () => {
 
   const filename = [
     game.gameDate.substr(0, 10),
-    game.teams.home.team.name,
+    game.teams.home.team.name.replace(/\s+/g, '_'),
     'vs',
-    game.teams.away.team.name,
+    game.teams.away.team.name.replace(/\s+/g, '_'),
     '(' + mediaFeedType + (callLetters && '_') + callLetters + ')',
   ].join('_');
 
@@ -199,9 +137,11 @@ const main = async () => {
     '-o',
     `./video/${filename}.mp4`,
     `--http-cookie`,
-    "Authorization=" + authorizationCookie.Authorization,
+    "Authorization=" + auth.authHeader,
     `--http-cookie`,
     "mediaAuth_v2=" + mediaAuth,
+    // '--hls-live-edge',
+    // '1000',
     url,
     'best'
   ]);

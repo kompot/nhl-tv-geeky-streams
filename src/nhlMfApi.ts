@@ -91,6 +91,8 @@ export namespace Response {
   };
 }
 
+export const NhlMfApiBaseUrl = "https://mf.svc.nhl.com";
+
 export interface NhlMfApi {
   "/ws/media/mf/v2.4/stream": {
     GET: {

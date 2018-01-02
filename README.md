@@ -1,4 +1,4 @@
-Best way to download NHL.TV games to your Mac, PC or Linux.
+Best way to download NHL.TV games to your Mac, PC or Linux. NHL.TV account **is required**.
 You need [Docker](https://www.docker.com/community-edition#/download) installed to run this.
 
 Loosely based on
@@ -6,7 +6,7 @@ Loosely based on
 - https://github.com/eracknaphobia/plugin.video.nhlgcl
 - https://github.com/cmaxwe/dl-nhltv
 
-Blackouts are not worked around in any way. You need a VPN connection if you'd like to watch all games.
+Blackouts are not worked around in any way (and everything will probably just fail, have not tested it). You need a VPN connection if you'd like to watch all games.
 
 Usage:
 =====

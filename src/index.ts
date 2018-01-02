@@ -5,6 +5,8 @@ import * as cookie from "cookie";
 import * as m3u8Parser from 'm3u8-parser';
 import * as _ from 'lodash';
 import { spawn } from 'child_process';
+import * as yaml from 'js-yaml';
+import * as fs from 'fs';
 
 import { NhlStatsApi, EpgTitle } from "./nhlStatsApi";
 import {
@@ -27,6 +29,8 @@ const userApi = axiosRestyped.create<NhlUserApi>({
 const mfApi = axiosRestyped.create<NhlMfApi>({
   baseURL: "https://mf.svc.nhl.com"
 });
+
+var config = yaml.safeLoad(fs.readFileSync('./config.yaml'))
 
 // NOTE: This token is from the meta tag "control_plane_client_token" on https://www.nhl.com/login
 const CLIENT_TOKEN =
@@ -103,11 +107,11 @@ const main = async () => {
     "/v2/user/identity",
     {
       email: {
-        address: process.env.email
+        address: config.email
       },
       type: USER_IDENTITY_TYPE.EmailPassword,
       password: {
-        value: process.env.password
+        value: config.password
       }
     },
     {

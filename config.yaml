@@ -1,0 +1,26 @@
+# Configuration file in YAML format
+# https://en.wikipedia.org/wiki/YAML#Basic_components
+
+# specify your NHL.TV account email
+email:
+# and password
+password:
+
+# ===================================
+# everything below is NOT working yet
+# ===================================
+
+# set your team, show all games day by day in case it's not set
+favouriteTeams:
+#  - WSH
+#  - PIT
+#  - TBL
+
+# do not show other teams' games in case favorite teams are set
+skipOtherTeams: true
+
+# this can be used for automatic cron job download once a day
+# will select preferred feed for favourite team
+# or first available if the only found game does not include one of
+# `favouriteTeams`
+startDownloadingIfSingleGameFound: true

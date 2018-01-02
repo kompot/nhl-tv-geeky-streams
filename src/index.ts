@@ -6,8 +6,14 @@ import * as _ from "lodash";
 import { spawn } from "child_process";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
+import * as luxon from "luxon";
 
-import { NhlStatsApi, NhlStatsApiBaseUrl, EpgTitle } from "./nhlStatsApi";
+import {
+  NhlStatsApi,
+  NhlStatsApiBaseUrl,
+  EpgTitle,
+  MEDIA_STATE
+} from "./nhlStatsApi";
 import {
   NhlMfApi,
   NhlMfApiBaseUrl,
@@ -50,7 +56,8 @@ const main = async () => {
         epgItem.eventId,
         epgItem.mediaPlaybackId,
         epgItem.mediaFeedType,
-        epgItem.callLetters
+        epgItem.callLetters,
+        epgItem.mediaState
       ].join("|"),
       name: _.compact([
         epgItem.mediaFeedType,
@@ -72,9 +79,13 @@ const main = async () => {
 
   const feedSelected = await inquirer.prompt(questionsFeed);
 
-  const [eventId, mediaPlaybackId, mediaFeedType, callLetters] = feedSelected[
-    questionNameFeed
-  ].split("|");
+  const [
+    eventId,
+    mediaPlaybackId,
+    mediaFeedType,
+    callLetters,
+    mediaState
+  ] = feedSelected[questionNameFeed].split("|");
 
   const auth = await getAuthSession(config.email, config.password, eventId);
 
@@ -128,6 +139,17 @@ const main = async () => {
     "(" + mediaFeedType + (callLetters && "_") + callLetters + ")"
   ].join("_");
 
+  // each frame is 5 seconds, so if the game has started 10 minutes ago
+  // we need to rewind (10 * 60)/5 = 120 frames back to start streaming
+  // from the beginning
+  const diffSeconds = luxon.DateTime.fromISO(game.gameDate).diffNow().as('second');
+  const rewindFramesBack =
+    config.playLiveGamesFromStart && mediaState === MEDIA_STATE.ON
+      ? Math.floor(Math.abs(diffSeconds) / 5)
+      : // 3 is streamlink's default
+        // https://streamlink.github.io/cli.html#cmdoption-hls-live-edge
+        3;
+
   const streamStart = spawn("streamlink", [
     "-o",
     `./video/${filename}.mp4`,
@@ -135,8 +157,8 @@ const main = async () => {
     "Authorization=" + auth.authHeader,
     `--http-cookie`,
     SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
-    // '--hls-live-edge',
-    // '1000',
+    "--hls-live-edge",
+    `${rewindFramesBack}`,
     url,
     "best"
   ]);

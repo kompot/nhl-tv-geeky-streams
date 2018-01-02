@@ -6,12 +6,12 @@ email:
 # and password
 password:
 
+# do not jump into the middle of a game, always start from beginning
+playLiveGamesFromStart: true
+
 # ===================================
 # everything below is NOT working yet
 # ===================================
-
-# do not jump into the middle of a game, always start from beginning
-playLiveGamesFromStart: true
 
 # set your team, show all games day by day in case it's not set
 favouriteTeams:

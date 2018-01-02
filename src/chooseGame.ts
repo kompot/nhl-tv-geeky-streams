@@ -55,10 +55,8 @@ export const chooseGame = async (
       let disabled = undefined;
       if (!anyStreamAvaiable) {
         disabled = "starts in ";
-        const dur = luxon.DateTime.fromISO(game.gameDate)
-          .diffNow()
-          .shiftTo("hour", "minute");
-        disabled += dur.get("hour") + "h" + Math.floor(dur.get("minute")) + "m";
+        const dur = luxon.DateTime.fromISO(game.gameDate).diffNow();
+        disabled += dur.toFormat("h:mm");
       }
       gamesOptions.push({
         value: String(game.gamePk),

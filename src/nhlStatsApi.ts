@@ -33,23 +33,25 @@ export enum EpgTitle {
 enum MediaFeedType {
   Home = "HOME",
   Away = "AWAY",
-  Composite = "COMPOSITE"
+  Composite = "COMPOSITE",
+  Iso = "ISO"
 }
 
-enum MediaState {
+export enum MEDIA_STATE {
   // live
-  MediaOn = "MEDIA_ON",
+  ON = "MEDIA_ON",
   // future, has not started
-  MediaOff = "MEDIA_OFF",
+  OFF = "MEDIA_OFF",
   // has finished
-  MediaArchive = "MEDIA_ARCHIVE",
+  ARCHIVE = "MEDIA_ARCHIVE",
 }
 
 interface EpgItem {
   guid: Guid;
-  mediaState: MediaState;
+  mediaState: MEDIA_STATE;
   mediaPlaybackId: string;
   mediaFeedType: MediaFeedType;
+  feedName: string;
   eventId: string;
   callLetters: string;
 }
@@ -59,7 +61,7 @@ interface Epg {
   items: EpgItem[];
 }
 
-interface Game {
+export interface Game {
   gamePk: number;
   link: Url;
   content: {
@@ -83,6 +85,8 @@ interface MatchDay {
   date: DateShort;
   games: Game[];
 }
+
+export const NhlStatsApiBaseUrl = "https://statsapi.web.nhl.com/api/v1";
 
 export interface NhlStatsApi {
   "/teams": {

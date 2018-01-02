@@ -1,14 +1,13 @@
 import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import axios from "axios";
-
 import * as m3u8Parser from "m3u8-parser";
 import * as _ from "lodash";
 import { spawn } from "child_process";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 
-import { NhlStatsApi, EpgTitle } from "./nhlStatsApi";
+import { NhlStatsApi, NhlStatsApiBaseUrl, EpgTitle } from "./nhlStatsApi";
 import {
   NhlMfApi,
   NhlMfApiBaseUrl,
@@ -21,9 +20,10 @@ import {
 } from "./nhlMfApi";
 
 import { getAuthSession } from "./auth";
+import { chooseGame } from "./chooseGame";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
-  baseURL: "https://statsapi.web.nhl.com/api/v1"
+  baseURL: NhlStatsApiBaseUrl
 });
 const mfApi = axiosRestyped.create<NhlMfApi>({
   baseURL: NhlMfApiBaseUrl
@@ -41,55 +41,22 @@ interface Config {
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
 
 const main = async () => {
-  const { data: { dates } } = await statsApi.request({
-    url: "/schedule",
-    params: {
-      startDate: "2017-12-30",
-      endDate: "2018-01-02",
-      expand: "schedule.game.content.media.epg"
-    }
-  });
-
-  const games = _.flatMap(dates, matchDay => matchDay.games);
-
-  const gamesOptions = games.map(game => ({
-    value: String(game.gamePk),
-    name:
-      game.gameDate +
-      "|" +
-      game.teams.home.team.name +
-      " vs " +
-      game.teams.away.team.name
-  }));
-
-  const questionNameGame = "game";
-
-  const questionsGame: inquirer.Question[] = [
-    {
-      type: "list",
-      name: questionNameGame,
-      message: "Choose game to watch",
-      choices: gamesOptions
-    }
-  ];
-
-  const gameSelected = await inquirer.prompt(questionsGame);
-  const game = games.find(
-    game => String(game.gamePk) === gameSelected[questionNameGame]
-  );
+  const game = await chooseGame();
 
   const feedOptions = game.content.media.epg
     .find(e => e.title === EpgTitle.NHLTV)
     .items.map(epgItem => ({
-      value:
-        epgItem.eventId +
-        "|" +
-        epgItem.mediaPlaybackId +
-        "|" +
-        epgItem.mediaFeedType +
-        "|" +
+      value: [
+        epgItem.eventId,
+        epgItem.mediaPlaybackId,
+        epgItem.mediaFeedType,
+        epgItem.callLetters
+      ].join("|"),
+      name: _.compact([
+        epgItem.mediaFeedType,
         epgItem.callLetters,
-      name: epgItem.mediaFeedType + ", " + epgItem.callLetters
+        epgItem.feedName
+      ]).join(", ")
     }));
 
   const questionNameFeed = "feed";
@@ -133,7 +100,6 @@ const main = async () => {
   const mediaAuth = (r1.data as Response.Playlist).session_info.sessionAttributes.find(
     sa => sa.attributeName === SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2
   ).attributeValue;
-  console.log("_____ mediaAuth", mediaAuth);
   const masterUrl = (r1.data as Response.Playlist).user_verified_event[0]
     .user_verified_content[0].user_verified_media_item[0].url;
 

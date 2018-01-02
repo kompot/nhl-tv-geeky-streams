@@ -52,11 +52,19 @@ export const chooseGame = async (
             item.mediaState === MEDIA_STATE.ON ||
             item.mediaState === MEDIA_STATE.ARCHIVE
         );
+      let disabled = undefined;
+      if (!anyStreamAvaiable) {
+        disabled = "starts in ";
+        const dur = luxon.DateTime.fromISO(game.gameDate)
+          .diffNow()
+          .shiftTo("hour", "minute");
+        disabled += dur.get("hour") + "h" + Math.floor(dur.get("minute")) + "m";
+      }
       gamesOptions.push({
         value: String(game.gamePk),
         name: game.teams.home.team.name + " vs " + game.teams.away.team.name,
-        disabled: anyStreamAvaiable ? undefined : "no streams available"
-      })
+        disabled
+      });
     });
     gamesOptions.push(new inquirer.Separator(" "));
   });

@@ -48,11 +48,9 @@ const getPreviousAuthSession = (): AuthSession | undefined => {
     fs.readFileSync(sessionFile).toString()
   );
   const sessionIsValid =
-    Math.abs(
-      luxon.DateTime.fromMillis(prevSessionData.timestamp)
-        .diffNow()
-        .as("minute")
-    ) < sessionValidInMinutes;
+    luxon.DateTime.local()
+      .diff(luxon.DateTime.fromMillis(prevSessionData.timestamp))
+      .as("minute") < sessionValidInMinutes;
   if (!sessionIsValid) {
     return undefined;
   }

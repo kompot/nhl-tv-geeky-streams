@@ -50,10 +50,12 @@ const main = async () => {
     name: game.gameDate + "|" + game.teams.home.team.name + " vs " + game.teams.away.team.name
   }));
 
+  const questionNameGame = 'game';
+
   const questionsGame: inquirer.Question[] = [
     {
       type: "list",
-      name: "game",
+      name: questionNameGame,
       message:
         "Choose game to watch",
       choices: gamesOptions
@@ -61,19 +63,20 @@ const main = async () => {
   ];
 
   const gameSelected = await inquirer.prompt(questionsGame);
-  const game = games.find(game => String(game.gamePk) === gameSelected.game)
+  const game = games.find(game => String(game.gamePk) === gameSelected[questionNameGame]);
 
   const feedOptions = game.content.media.epg
     .find(e => e.title === EpgTitle.NHLTV)
     .items.map(epgItem => ({
-      value: epgItem.eventId + "|" + epgItem.mediaPlaybackId,
+      value: epgItem.eventId + "|" + epgItem.mediaPlaybackId + "|" + epgItem.mediaFeedType + "|" + epgItem.callLetters,
       name: epgItem.mediaFeedType + ", " + epgItem.callLetters
     }))
+  const questionNameFeed = 'feed';
 
   const questionsFeed: inquirer.Question[] = [
     {
       type: "list",
-      name: "feed",
+      name: questionNameFeed,
       message:
         "Choose feed to watch",
       choices: feedOptions
@@ -82,7 +85,9 @@ const main = async () => {
 
   const feedSelected = await inquirer.prompt(questionsFeed);
 
-  const [eventId, mediaPlaybackId] = feedSelected.feed.split('|');
+  feedSelected[questionNameFeed]
+
+  const [eventId, mediaPlaybackId, mediaFeedType, callLetters] = feedSelected[questionNameFeed].split('|');
 
   const { data: { access_token } } = await userApi.post(
     "/oauth/token?grant_type=client_credentials",
@@ -178,9 +183,17 @@ const main = async () => {
 
   const url = masterUrl.substring(0, masterUrl.lastIndexOf('/') + 1) + maxBitrate
 
+  const filename = [
+    game.gameDate.substr(0, 10),
+    game.teams.home.team.name,
+    'vs',
+    game.teams.away.team.name,
+    '(' + mediaFeedType + (callLetters && '_') + callLetters + ')',
+  ].join('_');
+
   const streamStart = spawn('streamlink', [
     '-o',
-    './video/1.mp4',
+    `./video/${filename}.mp4`,
     `--http-cookie`,
     "Authorization=" + authorizationCookie.Authorization,
     `--http-cookie`,

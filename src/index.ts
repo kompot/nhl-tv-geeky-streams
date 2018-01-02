@@ -142,10 +142,14 @@ const main = async () => {
   // each frame is 5 seconds, so if the game has started 10 minutes ago
   // we need to rewind (10 * 60)/5 = 120 frames back to start streaming
   // from the beginning
-  const diffSeconds = luxon.DateTime.fromISO(game.gameDate).diffNow().as('second');
+  const diffSeconds = luxon.DateTime.local()
+    .diff(luxon.DateTime.fromISO(game.gameDate))
+    .as("second");
   const rewindFramesBack =
-    config.playLiveGamesFromStart && mediaState === MEDIA_STATE.ON
-      ? Math.floor(Math.abs(diffSeconds) / 5)
+    diffSeconds > 0 &&
+    config.playLiveGamesFromStart &&
+    mediaState === MEDIA_STATE.ON
+      ? Math.floor(diffSeconds / 5)
       : // 3 is streamlink's default
         // https://streamlink.github.io/cli.html#cmdoption-hls-live-edge
         3;

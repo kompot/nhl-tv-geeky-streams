@@ -13,11 +13,11 @@ playLiveGamesFromStart: true
 # everything below is NOT working yet
 # ===================================
 
-# set your team, show all games day by day in case it's not set
-favouriteTeams:
-#  - WSH
-#  - PIT
-#  - TBL
+# set your favourite teams, will highlight them in the list
+# get abbreviations from
+# https://statsapi.web.nhl.com/api/v1/teams
+# favouriteTeams: [WSH, PIT, TBL]
+favouriteTeams: []
 
 # do not show other teams' games in case favorite teams are set
 skipOtherTeams: true

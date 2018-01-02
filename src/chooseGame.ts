@@ -2,13 +2,15 @@ import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import * as _ from "lodash";
 import * as luxon from "luxon";
+import chalk from "chalk";
 
 import {
   NhlStatsApi,
   NhlStatsApiBaseUrl,
   EpgTitle,
   Game,
-  MEDIA_STATE
+  MEDIA_STATE,
+  Team
 } from "./nhlStatsApi";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
@@ -20,7 +22,23 @@ enum DIRECTION {
   FORWARD = "forward"
 }
 
+const isFavouriteTeam = (
+  team: Team,
+  favouriteTeamsAbbreviations: string[]
+): boolean => favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
+
+const renderTeam = (
+  team: Team,
+  favouriteTeamsAbbreviations: string[]
+): string => {
+  if (isFavouriteTeam(team, favouriteTeamsAbbreviations)) {
+    return chalk.yellow(team.name);
+  }
+  return team.name;
+};
+
 export const chooseGame = async (
+  favouriteTeamsAbbreviations: string[],
   date: luxon.DateTime = luxon.DateTime.local()
 ): Promise<Game> => {
   const { data: { dates } } = await statsApi.request({
@@ -58,9 +76,13 @@ export const chooseGame = async (
         const dur = luxon.DateTime.fromISO(game.gameDate).diffNow();
         disabled += dur.toFormat("h:mm");
       }
+      const gameTeams =
+        renderTeam(game.teams.home.team, favouriteTeamsAbbreviations) +
+        " vs " +
+        renderTeam(game.teams.away.team, favouriteTeamsAbbreviations);
       gamesOptions.push({
         value: String(game.gamePk),
-        name: game.teams.home.team.name + " vs " + game.teams.away.team.name,
+        name: gameTeams,
         disabled
       });
     });
@@ -88,10 +110,10 @@ export const chooseGame = async (
   const gameSelected = await inquirer.prompt(questionsGame);
 
   if (gameSelected[questionNameGame] === DIRECTION.BACK) {
-    return chooseGame(date.minus({ days: 1 }));
+    return chooseGame(favouriteTeamsAbbreviations, date.minus({ days: 1 }));
   }
   if (gameSelected[questionNameGame] === DIRECTION.FORWARD) {
-    return chooseGame(date.plus({ days: 1 }));
+    return chooseGame(favouriteTeamsAbbreviations, date.plus({ days: 1 }));
   }
 
   const game = games.find(

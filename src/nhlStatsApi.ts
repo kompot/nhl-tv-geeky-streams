@@ -10,7 +10,7 @@ type DateLong = string;
 export type Url = string;
 type Guid = string;
 
-interface Team {
+export interface Team {
   id: number;
   name: string;
   abbreviation: string;
@@ -73,10 +73,10 @@ export interface Game {
   gameDate: DateLong;
   teams: {
     home: {
-      team: TeamShort;
+      team: Team;
     };
     away: {
-      team: TeamShort;
+      team: Team;
     };
   };
 }

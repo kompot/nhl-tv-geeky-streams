@@ -7,10 +7,12 @@
   "license": "MIT",
   "private": false,
   "dependencies": {
+    "@types/chalk": "^2.2.0",
     "@types/cookie": "^0.3.1",
     "@types/inquirer": "^0.0.36",
     "@types/lodash": "^4.14.91",
     "@types/luxon": "^0.2.0",
+    "chalk": "^2.3.0",
     "cookie": "^0.3.1",
     "inquirer": "^4.0.1",
     "js-yaml": "^3.10.0",

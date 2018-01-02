@@ -47,7 +47,7 @@ interface Config {
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
 
 const main = async () => {
-  const game = await chooseGame();
+  const game = await chooseGame(config.favouriteTeams);
 
   const feedOptions = game.content.media.epg
     .find(e => e.title === EpgTitle.NHLTV)

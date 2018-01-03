@@ -10,7 +10,8 @@ import {
   EpgTitle,
   Game,
   MEDIA_STATE,
-  Team
+  Team,
+  GAME_DETAILED_STATE
 } from "./nhlStatsApi";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
@@ -46,7 +47,8 @@ export const chooseGame = async (
     params: {
       startDate: date.toISODate(),
       endDate: date.toISODate(),
-      expand: "schedule.game.content.media.epg,schedule.teams"
+      expand:
+        "schedule.game.content.media.epg,schedule.teams,schedule.linescore"
     }
   });
 
@@ -76,13 +78,30 @@ export const chooseGame = async (
         const dur = luxon.DateTime.fromISO(game.gameDate).diffNow();
         disabled += dur.toFormat("h:mm");
       }
-      const gameTeams =
+      let name =
         renderTeam(game.teams.home.team, favouriteTeamsAbbreviations) +
         " vs " +
         renderTeam(game.teams.away.team, favouriteTeamsAbbreviations);
+      if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
+        name += ", " + game.status.detailedState;
+      }
+      if (
+        game.status.detailedState === GAME_DETAILED_STATE.INPROGRESS
+      ) {
+        name +=
+          ", " +
+          game.linescore.currentPeriodOrdinal +
+          " " +
+          game.linescore.currentPeriodTimeRemaining;
+      }
+      if (
+        game.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL
+      ) {
+        name += ", soon to end";
+      }
       gamesOptions.push({
         value: String(game.gamePk),
-        name: gameTeams,
+        name: name,
         disabled
       });
     });

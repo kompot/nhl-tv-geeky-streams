@@ -61,7 +61,22 @@ interface Epg {
   items: EpgItem[];
 }
 
+export enum GAME_DETAILED_STATE {
+  SCHEDULED = 'Scheduled',
+  PREGAME = 'Pre-Game',
+  INPROGRESS = 'In Progress',
+  INPROGRESSCRITICAL = 'In Progress - Critical',
+}
+
 export interface Game {
+  status: {
+    detailedState: GAME_DETAILED_STATE;
+  };
+  linescore: {
+    currentPeriod: number;
+    currentPeriodOrdinal: string;
+    currentPeriodTimeRemaining: string;
+  };
   gamePk: number;
   link: Url;
   content: {

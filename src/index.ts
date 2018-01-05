@@ -145,8 +145,9 @@ const main = async () => {
   const diffSeconds = luxon.DateTime.local()
     .diff(luxon.DateTime.fromISO(game.gameDate))
     .as("second");
+  const gameHasStarted = diffSeconds > 0;
   const rewindFramesBack =
-    diffSeconds > 0 &&
+    gameHasStarted &&
     config.playLiveGamesFromStart &&
     mediaState === MEDIA_STATE.ON
       ? Math.floor(diffSeconds / 5)

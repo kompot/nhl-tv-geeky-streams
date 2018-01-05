@@ -66,6 +66,7 @@ export enum GAME_DETAILED_STATE {
   PREGAME = 'Pre-Game',
   INPROGRESS = 'In Progress',
   INPROGRESSCRITICAL = 'In Progress - Critical',
+  POSTPONED = 'Postponed'
 }
 
 export interface Game {

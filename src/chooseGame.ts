@@ -40,7 +40,9 @@ const renderTeam = (
 
 export const chooseGame = async (
   favouriteTeamsAbbreviations: string[],
-  date: luxon.DateTime = luxon.DateTime.local()
+  // will set timezone to somewhat central US so that we always get all metches
+  // for current US day, even if you are actually in Asia
+  date: luxon.DateTime = luxon.DateTime.local().setZone('America/Denver')
 ): Promise<Game> => {
   const { data: { dates } } = await statsApi.request({
     url: "/schedule",
@@ -74,9 +76,15 @@ export const chooseGame = async (
         );
       let disabled = undefined;
       if (!anyStreamAvaiable) {
-        disabled = "starts in ";
-        const dur = luxon.DateTime.fromISO(game.gameDate).diffNow();
-        disabled += dur.toFormat("h:mm");
+        const dt = luxon.DateTime.fromISO(game.gameDate);
+        const dur = dt.diffNow();
+        if (dur.as('hour') < 24) {
+          disabled = "starts in ";
+          disabled += dur.toFormat("h:mm");
+        }
+      }
+      if (game.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
+        disabled = 'postponed'
       }
       let name =
         renderTeam(game.teams.home.team, favouriteTeamsAbbreviations) +

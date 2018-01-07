@@ -88,9 +88,9 @@ export const chooseGame = async (
         disabled = 'postponed'
       }
       let name =
-        renderTeam(game.teams.home.team, config.favouriteTeams) +
-        " vs " +
-        renderTeam(game.teams.away.team, config.favouriteTeams);
+        renderTeam(game.teams.away.team, config.favouriteTeams) +
+        " at " +
+        renderTeam(game.teams.home.team, config.favouriteTeams);
       if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
         name += ", " + game.status.detailedState;
       }

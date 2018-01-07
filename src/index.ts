@@ -136,9 +136,9 @@ const main = async () => {
     luxon.DateTime.fromISO(game.gameDate)
       .setZone(config.matchTimeZone)
       .toISODate(),
-    game.teams.home.team.name.replace(/\s+/g, "_"),
-    "vs",
-    game.teams.away.team.name.replace(/\s+/g, "_"),
+    game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
+    "at",
+    game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
     "(" + mediaFeedType + (callLetters && "_") + callLetters + ")"
   ].join("_");
 

@@ -13,6 +13,7 @@ import {
   Team,
   GAME_DETAILED_STATE
 } from "./nhlStatsApi";
+import { Config } from "./index";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
@@ -39,10 +40,10 @@ const renderTeam = (
 };
 
 export const chooseGame = async (
-  favouriteTeamsAbbreviations: string[],
+  config: Config,
   // will set timezone to somewhat central US so that we always get all metches
   // for current US day, even if you are actually in Asia
-  date: luxon.DateTime = luxon.DateTime.local().setZone('America/Denver')
+  date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
 ): Promise<Game> => {
   const { data: { dates } } = await statsApi.request({
     url: "/schedule",
@@ -87,9 +88,9 @@ export const chooseGame = async (
         disabled = 'postponed'
       }
       let name =
-        renderTeam(game.teams.home.team, favouriteTeamsAbbreviations) +
+        renderTeam(game.teams.home.team, config.favouriteTeams) +
         " vs " +
-        renderTeam(game.teams.away.team, favouriteTeamsAbbreviations);
+        renderTeam(game.teams.away.team, config.favouriteTeams);
       if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
         name += ", " + game.status.detailedState;
       }
@@ -137,10 +138,10 @@ export const chooseGame = async (
   const gameSelected = await inquirer.prompt(questionsGame);
 
   if (gameSelected[questionNameGame] === DIRECTION.BACK) {
-    return chooseGame(favouriteTeamsAbbreviations, date.minus({ days: 1 }));
+    return chooseGame(config, date.minus({ days: 1 }));
   }
   if (gameSelected[questionNameGame] === DIRECTION.FORWARD) {
-    return chooseGame(favouriteTeamsAbbreviations, date.plus({ days: 1 }));
+    return chooseGame(config, date.plus({ days: 1 }));
   }
 
   const game = games.find(

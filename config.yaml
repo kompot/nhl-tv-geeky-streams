@@ -6,6 +6,12 @@ email:
 # and password
 password:
 
+# dates for matches will be shown in this time zone
+# default is set the way that all matches for the given day
+# are within 1 day in this timezone
+# should probably leave this as is
+matchTimeZone: America/Denver
+
 # do not jump into the middle of a game, always start from beginning
 playLiveGamesFromStart: true
 

@@ -35,9 +35,10 @@ const mfApi = axiosRestyped.create<NhlMfApi>({
   baseURL: NhlMfApiBaseUrl
 });
 
-interface Config {
+export interface Config {
   email: string;
   password: string;
+  matchTimeZone: string;
   playLiveGamesFromStart?: boolean;
   favouriteTeams?: string[];
   skipOtherTeams?: boolean;
@@ -47,7 +48,7 @@ interface Config {
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
 
 const main = async () => {
-  const game = await chooseGame(config.favouriteTeams);
+  const game = await chooseGame(config);
 
   const feedOptions = game.content.media.epg
     .find(e => e.title === EpgTitle.NHLTV)
@@ -132,7 +133,9 @@ const main = async () => {
     masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + maxBitrate;
 
   const filename = [
-    game.gameDate.substr(0, 10),
+    luxon.DateTime.fromISO(game.gameDate)
+      .setZone(config.matchTimeZone)
+      .toISODate(),
     game.teams.home.team.name.replace(/\s+/g, "_"),
     "vs",
     game.teams.away.team.name.replace(/\s+/g, "_"),

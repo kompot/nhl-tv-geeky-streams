@@ -11,10 +11,11 @@ Blackouts are not worked around in any way (and everything will probably just fa
 Usage:
 =====
 
-1. Edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login to official NHL sites).
+1. Edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login to official NHL sites). Explore other options available.
 2. Run
   ```
   docker-compose run --rm nhltv
   ```
-3. Select game and stream type.
-4. Video will be downloaded to `./video` folder.
+3. Wait for several minutes for image to be built.
+4. Select game and stream type.
+5. Video will be downloaded to `./video` folder.

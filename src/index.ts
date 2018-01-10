@@ -27,6 +27,8 @@ import {
 
 import { getAuthSession } from "./auth";
 import { chooseGame } from "./chooseGame";
+import { DateTime, Duration } from "luxon";
+import { caclRecordingOffset } from "./calcRecordingOffset";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
@@ -142,34 +144,27 @@ const main = async () => {
     "(" + mediaFeedType + (callLetters && "_") + callLetters + ")"
   ].join("_");
 
-  // each frame is 5 seconds, so if the game has started 10 minutes ago
-  // we need to rewind (10 * 60)/5 = 120 frames back to start streaming
-  // from the beginning
-  const diffSeconds = luxon.DateTime.local()
-    .diff(luxon.DateTime.fromISO(game.gameDate))
-    .as("second");
-  const gameHasStarted = diffSeconds > 0;
-  const rewindFramesBack =
-    gameHasStarted &&
-    config.playLiveGamesFromStart &&
-    mediaState === MEDIA_STATE.ON
-      ? Math.floor(diffSeconds / 5)
-      : // 3 is streamlink's default
-        // https://streamlink.github.io/cli.html#cmdoption-hls-live-edge
-        3;
+  const recordingOffset = caclRecordingOffset(
+    filename,
+    game,
+    mediaState,
+    config
+  );
 
-  const streamStart = spawn("streamlink", [
+  const streamlinkOptions = [
     "-o",
-    `./video/${filename}.mp4`,
+    `./video/${recordingOffset.finalFilename}.mp4`,
+    "--hls-start-offset",
+    recordingOffset.durationOffset.toFormat("hh:mm:ss"),
     `--http-cookie`,
     "Authorization=" + auth.authHeader,
     `--http-cookie`,
     SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
-    "--hls-live-edge",
-    `${rewindFramesBack}`,
     url,
     "best"
-  ]);
+  ];
+
+  const streamStart = spawn("streamlink", streamlinkOptions);
 
   streamStart.stdout.on("data", data => {
     console.log(`stdout: ${data}`);

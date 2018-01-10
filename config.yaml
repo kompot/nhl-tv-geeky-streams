@@ -13,6 +13,8 @@ password:
 matchTimeZone: America/Denver
 
 # do not jump into the middle of a game, always start from beginning
+# does not have effect if there are previous files downloaded - will continue
+# downloading from where it ended
 playLiveGamesFromStart: true
 
 # set your favourite teams, will highlight them in the list

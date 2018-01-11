@@ -7,14 +7,13 @@ services:
     tty: true
     build: .
     working_dir: /usr/src/app
-    # environment:
-    #   env_file: .env
-    #   NODE_ENV: development
+    env_file:
+      - .env
     volumes:
       - .:/usr/src/app
       # logs, session data
       - ./tmp:/usr/src/app/tmp
-      - ./video:/usr/src/app/video
+      - ${DOWNLOAD_DIR}:/usr/src/app/video
       - node_modules:/usr/src/app/node_modules
 
 volumes:

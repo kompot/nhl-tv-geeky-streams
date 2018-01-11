@@ -21,4 +21,4 @@ docker-compose run --rm nhltv
 
 3. Wait for several minutes for image to be built.
 4. Select game and stream type.
-5. Video will be downloaded to `./video` folder.
+5. Video will be downloaded to `./video` folder. This location can be customized in `.env` file.

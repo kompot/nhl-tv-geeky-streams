@@ -29,14 +29,61 @@ const isFavouriteTeam = (
   favouriteTeamsAbbreviations: string[]
 ): boolean => favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
 
+// Columbus Blue Jackets
+const maxTeamLength = 21;
+const paddingForChalk = 10;
+
 const renderTeam = (
   team: Team,
   favouriteTeamsAbbreviations: string[]
 ): string => {
-  if (isFavouriteTeam(team, favouriteTeamsAbbreviations)) {
-    return chalk.yellow(team.name);
+  const isFavTeam = isFavouriteTeam(team, favouriteTeamsAbbreviations);
+  const tName = isFavTeam ? chalk.yellow(team.name) : team.name;
+  return _.padEnd(tName, maxTeamLength + (isFavTeam ? paddingForChalk : 0));
+};
+
+const renderGameName = (game: Game, config: Config): string => {
+  let name = renderTeam(game.teams.away.team, config.favouriteTeams);
+  name += chalk.gray(" @ ");
+  name += renderTeam(game.teams.home.team, config.favouriteTeams);
+  if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
+    name += game.status.detailedState;
   }
-  return team.name;
+  if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESS) {
+    name +=
+      game.linescore.currentPeriodOrdinal +
+      " " +
+      game.linescore.currentPeriodTimeRemaining;
+  }
+  if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL) {
+    name += "soon to end";
+  }
+  return name;
+};
+
+const isGameDisabledForDownloadAndReasonWhy = (
+  game: Game
+): string | undefined => {
+  const anyStreamAvaiable = game.content.media.epg
+    .find(e => e.title === EpgTitle.NHLTV)
+    .items.find(
+      item =>
+        item.mediaState === MEDIA_STATE.ON ||
+        item.mediaState === MEDIA_STATE.ARCHIVE
+    );
+  let disabled = undefined;
+  if (!anyStreamAvaiable) {
+    const dt = luxon.DateTime.fromISO(game.gameDate);
+    const dur = dt.diffNow();
+    if (dur.as("hour") < 24) {
+      disabled = "starts in ";
+      disabled += dur.toFormat("h:mm");
+    }
+  }
+  if (game.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
+    disabled = "postponed";
+  }
+  return disabled;
 };
 
 export const chooseGame = async (
@@ -68,50 +115,10 @@ export const chooseGame = async (
     gamesOptions.push(new inquirer.Separator(matchDay.date));
     gamesOptions.push(new inquirer.Separator(" "));
     matchDay.games.forEach(game => {
-      const anyStreamAvaiable = game.content.media.epg
-        .find(e => e.title === EpgTitle.NHLTV)
-        .items.find(
-          item =>
-            item.mediaState === MEDIA_STATE.ON ||
-            item.mediaState === MEDIA_STATE.ARCHIVE
-        );
-      let disabled = undefined;
-      if (!anyStreamAvaiable) {
-        const dt = luxon.DateTime.fromISO(game.gameDate);
-        const dur = dt.diffNow();
-        if (dur.as('hour') < 24) {
-          disabled = "starts in ";
-          disabled += dur.toFormat("h:mm");
-        }
-      }
-      if (game.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
-        disabled = 'postponed'
-      }
-      let name =
-        renderTeam(game.teams.away.team, config.favouriteTeams) +
-        " at " +
-        renderTeam(game.teams.home.team, config.favouriteTeams);
-      if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
-        name += ", " + game.status.detailedState;
-      }
-      if (
-        game.status.detailedState === GAME_DETAILED_STATE.INPROGRESS
-      ) {
-        name +=
-          ", " +
-          game.linescore.currentPeriodOrdinal +
-          " " +
-          game.linescore.currentPeriodTimeRemaining;
-      }
-      if (
-        game.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL
-      ) {
-        name += ", soon to end";
-      }
       gamesOptions.push({
         value: String(game.gamePk),
-        name: name,
-        disabled
+        name: renderGameName(game, config),
+        disabled: isGameDisabledForDownloadAndReasonWhy(game)
       });
     });
     gamesOptions.push(new inquirer.Separator(" "));

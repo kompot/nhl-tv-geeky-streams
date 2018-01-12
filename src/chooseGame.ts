@@ -29,8 +29,8 @@ const isFavouriteTeam = (
   favouriteTeamsAbbreviations: string[]
 ): boolean => favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
 
-// Columbus Blue Jackets
-const maxTeamLength = 21;
+// Columbus Blue Jackets + 2
+const maxTeamLength = 23;
 const paddingForChalk = 10;
 
 const renderTeam = (
@@ -41,16 +41,15 @@ const renderTeam = (
 ): string => {
   const isFavTeam = isFavouriteTeam(team, favouriteTeamsAbbreviations);
   const tName = isFavTeam ? chalk.yellow(team.name) : team.name;
-  const teamPadEnd = _.padEnd(
-    tName,
-    maxTeamLength + (isFavTeam ? paddingForChalk : 0)
-  );
+  const favTeamPadding = isFavTeam ? paddingForChalk : 0;
+  const teamPadEnd = _.padEnd(tName, maxTeamLength + favTeamPadding);
   if (!padStart) {
     return teamPadEnd;
   }
   return _.padStart(
     teamPadEnd,
-    streamsAvailable(game) ? maxTeamLength + 2 : maxTeamLength
+    (streamsAvailable(game) ? maxTeamLength + 2 : maxTeamLength) +
+      favTeamPadding
   );
 };
 
@@ -68,29 +67,30 @@ const renderGameName = (
   name += chalk.gray(" @ ");
   name += renderTeam(game.teams.home.team, config.favouriteTeams, game, false);
   if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
-    name += game.status.detailedState;
+    name += " " + game.status.detailedState;
   }
   if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESS) {
     name +=
+      " " +
       game.linescore.currentPeriodOrdinal +
       " " +
       game.linescore.currentPeriodTimeRemaining;
   }
   if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL) {
-    name += "soon to end";
+    name += " soon to end";
   }
   if (
     streamsAvailable(game) &&
     game.status.detailedState === GAME_DETAILED_STATE.SCHEDULED
   ) {
-    name += "sone to start";
+    name += " sone to start";
   }
   if (
     streamsAvailable(game, [MEDIA_STATE.ON]) &&
     (game.status.detailedState === GAME_DETAILED_STATE.GAMEOVER ||
       game.status.detailedState === GAME_DETAILED_STATE.FINAL)
   ) {
-    name += "ended, live stream";
+    name += " ended, live stream";
   }
   const passedFromGameStart = luxon.DateTime.local().diff(
     luxon.DateTime.fromISO(game.gameDate)
@@ -99,7 +99,7 @@ const renderGameName = (
     streamsAvailable(game, [MEDIA_STATE.ARCHIVE]) &&
     passedFromGameStart.as("hour") < 8
   ) {
-    name += "ended, archive stream";
+    name += " ended, archive stream";
   }
   return name;
 };

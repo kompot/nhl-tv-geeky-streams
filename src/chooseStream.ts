@@ -25,15 +25,8 @@ export const chooseStream = async (masterUrl: string): Promise<string> => {
   parser.push(masterPlaylistContent.data);
   parser.end();
 
-  var parsedManifest = parser.manifest;
-
-  const maxBitrateUri = _.maxBy(
-    parsedManifest.playlists,
-    (pl: any) => pl.attributes.BANDWIDTH
-  ).uri;
-
   const streamOptions = _.sortBy(
-    parsedManifest.playlists,
+    parser.manifest.playlists,
     pl => -pl.attributes.BANDWIDTH
   ).map(streamOption);
 

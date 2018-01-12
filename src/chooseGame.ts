@@ -85,15 +85,32 @@ const renderGameName = (
   ) {
     name += "sone to start";
   }
+  if (
+    streamsAvailable(game, [MEDIA_STATE.ON]) &&
+    (game.status.detailedState === GAME_DETAILED_STATE.GAMEOVER ||
+      game.status.detailedState === GAME_DETAILED_STATE.FINAL)
+  ) {
+    name += "ended, live stream";
+  }
+  const passedFromGameStart = luxon.DateTime.local().diff(
+    luxon.DateTime.fromISO(game.gameDate)
+  );
+  if (
+    streamsAvailable(game, [MEDIA_STATE.ARCHIVE]) &&
+    passedFromGameStart.as("hour") < 8
+  ) {
+    name += "ended, archive stream";
+  }
   return name;
 };
 
-const streamsAvailable = (game: Game): boolean =>
+const streamsAvailable = (
+  game: Game,
+  mediaStatesToCheckFor: MEDIA_STATE[] = [MEDIA_STATE.ON, MEDIA_STATE.ARCHIVE]
+): boolean =>
   _.some(
     game.content.media.epg.find(e => e.title === EpgTitle.NHLTV).items,
-    item =>
-      item.mediaState === MEDIA_STATE.ON ||
-      item.mediaState === MEDIA_STATE.ARCHIVE
+    item => _.some(mediaStatesToCheckFor, ms => ms === item.mediaState)
   );
 
 const isGameDisabledForDownloadAndReasonWhy = (

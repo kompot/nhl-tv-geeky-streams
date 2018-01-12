@@ -1,7 +1,6 @@
 import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import axios from "axios";
-import * as m3u8Parser from "m3u8-parser";
 import * as _ from "lodash";
 import { spawn } from "child_process";
 import * as yaml from "js-yaml";
@@ -27,6 +26,7 @@ import {
 
 import { getAuthSession } from "./auth";
 import { chooseGame } from "./chooseGame";
+import { chooseStream } from "./chooseStream";
 import { DateTime, Duration } from "luxon";
 import { caclRecordingOffset } from "./calcRecordingOffset";
 
@@ -117,22 +117,7 @@ const main = async () => {
   const masterUrl = (r1.data as Response.Playlist).user_verified_event[0]
     .user_verified_content[0].user_verified_media_item[0].url;
 
-  const masterPlaylistContent = await axios.get(masterUrl);
-
-  var parser = new m3u8Parser.Parser();
-
-  parser.push(masterPlaylistContent.data);
-  parser.end();
-
-  var parsedManifest = parser.manifest;
-
-  const maxBitrate = _.maxBy(
-    parsedManifest.playlists,
-    (pl: any) => pl.attributes.BANDWIDTH
-  ).uri;
-
-  const url =
-    masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + maxBitrate;
+  const url = await chooseStream(masterUrl);
 
   const filename = [
     luxon.DateTime.fromISO(game.gameDate)

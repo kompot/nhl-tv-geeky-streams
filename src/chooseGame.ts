@@ -35,17 +35,38 @@ const paddingForChalk = 10;
 
 const renderTeam = (
   team: Team,
-  favouriteTeamsAbbreviations: string[]
+  favouriteTeamsAbbreviations: string[],
+  game: Game,
+  padStart: boolean
 ): string => {
   const isFavTeam = isFavouriteTeam(team, favouriteTeamsAbbreviations);
   const tName = isFavTeam ? chalk.yellow(team.name) : team.name;
-  return _.padEnd(tName, maxTeamLength + (isFavTeam ? paddingForChalk : 0));
+  const teamPadEnd = _.padEnd(
+    tName,
+    maxTeamLength + (isFavTeam ? paddingForChalk : 0)
+  );
+  if (!padStart) {
+    return teamPadEnd;
+  }
+  return _.padStart(
+    teamPadEnd,
+    streamsAvailable(game) ? maxTeamLength + 2 : maxTeamLength
+  );
 };
 
-const renderGameName = (game: Game, config: Config): string => {
-  let name = renderTeam(game.teams.away.team, config.favouriteTeams);
+const renderGameName = (
+  game: Game,
+  config: Config,
+  allGamesHaveStreamsAvailable: boolean
+): string => {
+  let name = renderTeam(
+    game.teams.away.team,
+    config.favouriteTeams,
+    game,
+    !allGamesHaveStreamsAvailable
+  );
   name += chalk.gray(" @ ");
-  name += renderTeam(game.teams.home.team, config.favouriteTeams);
+  name += renderTeam(game.teams.home.team, config.favouriteTeams, game, false);
   if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
     name += game.status.detailedState;
   }
@@ -58,26 +79,35 @@ const renderGameName = (game: Game, config: Config): string => {
   if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL) {
     name += "soon to end";
   }
+  if (
+    streamsAvailable(game) &&
+    game.status.detailedState === GAME_DETAILED_STATE.SCHEDULED
+  ) {
+    name += "sone to start";
+  }
   return name;
 };
+
+const streamsAvailable = (game: Game): boolean =>
+  _.some(
+    game.content.media.epg.find(e => e.title === EpgTitle.NHLTV).items,
+    item =>
+      item.mediaState === MEDIA_STATE.ON ||
+      item.mediaState === MEDIA_STATE.ARCHIVE
+  );
 
 const isGameDisabledForDownloadAndReasonWhy = (
   game: Game
 ): string | undefined => {
-  const anyStreamAvaiable = game.content.media.epg
-    .find(e => e.title === EpgTitle.NHLTV)
-    .items.find(
-      item =>
-        item.mediaState === MEDIA_STATE.ON ||
-        item.mediaState === MEDIA_STATE.ARCHIVE
-    );
   let disabled = undefined;
-  if (!anyStreamAvaiable) {
+  if (!streamsAvailable(game)) {
     const dt = luxon.DateTime.fromISO(game.gameDate);
     const dur = dt.diffNow();
     if (dur.as("hour") < 24) {
       disabled = "starts in ";
       disabled += dur.toFormat("h:mm");
+    } else {
+      disabled = chalk.gray(game.status.detailedState.toLowerCase());
     }
   }
   if (game.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
@@ -110,6 +140,7 @@ export const chooseGame = async (
       name: "⤺  one day back"
     }
   ];
+  const allGamesHaveStreamsAvailable = _.every(games, streamsAvailable);
   dates.forEach(matchDay => {
     gamesOptions.push(new inquirer.Separator(" "));
     gamesOptions.push(new inquirer.Separator(matchDay.date));
@@ -117,7 +148,7 @@ export const chooseGame = async (
     matchDay.games.forEach(game => {
       gamesOptions.push({
         value: String(game.gamePk),
-        name: renderGameName(game, config),
+        name: renderGameName(game, config, allGamesHaveStreamsAvailable),
         disabled: isGameDisabledForDownloadAndReasonWhy(game)
       });
     });

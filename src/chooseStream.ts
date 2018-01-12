@@ -41,8 +41,9 @@ export const chooseStream = async (masterUrl: string): Promise<string> => {
   ];
 
   const streamSelected = await inquirer.prompt(questionsStream);
+  const streamSelectedUri = streamSelected[questionNameStream];
 
   return (
-    masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + streamSelected
+    masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + streamSelectedUri
   );
 };

@@ -13,11 +13,16 @@ const streamOption = pl => {
   const bitrate = chalk.gray("" + pl.attributes.BANDWIDTH / 1000 + "k");
   return {
     name: _.padEnd(resolution, 6) + " " + bitrate,
-    value: pl.uri
+    value: [pl.uri, resolution].join("|")
   };
 };
 
-export const chooseStream = async (masterUrl: string): Promise<string> => {
+interface IStream {
+  url: string;
+  resolution: string;
+}
+
+export const chooseStream = async (masterUrl: string): Promise<IStream> => {
   const masterPlaylistContent = await axios.get(masterUrl);
 
   var parser = new m3u8Parser.Parser();
@@ -41,9 +46,10 @@ export const chooseStream = async (masterUrl: string): Promise<string> => {
   ];
 
   const streamSelected = await inquirer.prompt(questionsStream);
-  const streamSelectedUri = streamSelected[questionNameStream];
+  const [url, resolution] = streamSelected[questionNameStream].split("|");
 
-  return (
-    masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + streamSelectedUri
-  );
+  return {
+    url: masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + url,
+    resolution,
+  };
 };

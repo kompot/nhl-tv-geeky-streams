@@ -117,7 +117,7 @@ const main = async () => {
   const masterUrl = (r1.data as Response.Playlist).user_verified_event[0]
     .user_verified_content[0].user_verified_media_item[0].url;
 
-  const url = await chooseStream(masterUrl);
+  const stream = await chooseStream(masterUrl);
 
   const filename = [
     luxon.DateTime.fromISO(game.gameDate)
@@ -126,7 +126,9 @@ const main = async () => {
     game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
     "at",
     game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
-    "(" + mediaFeedType + (callLetters && "_") + callLetters + ")"
+    "(" + mediaFeedType + (callLetters && "_") + callLetters + ")",
+    stream.resolution,
+    mediaState === MEDIA_STATE.ON ? 'live' : 'archive'
   ].join("_");
 
   const recordingOffset = caclRecordingOffset(
@@ -145,7 +147,7 @@ const main = async () => {
     "Authorization=" + auth.authHeader,
     `--http-cookie`,
     SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
-    url,
+    stream.url,
     "best"
   ];
 
@@ -164,8 +166,4 @@ const main = async () => {
   });
 };
 
-try {
-  main();
-} catch (e) {
-  console.error("______", e);
-}
+main();

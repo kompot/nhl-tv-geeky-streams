@@ -40,22 +40,24 @@ export const caclRecordingOffset = (
 
   let offsetBackToStartRecordingAt: Duration;
   const gameStart = luxon.DateTime.fromISO(game.gameDate);
-  let filenameSuffix: string = "";
+  let filenameSuffix: string | number = "";
   if (files.length) {
     const filesModifiedTimes = files.map(file =>
       _.toNumber(shell.exec(`stat -c '%Y' "${file}"`).stdout)
     );
 
-    const firstFileLastModified: number = _.min(filesModifiedTimes);
-    const firstFileLastModifiedIndex: number = _.findIndex(
+    const oldestFileModificationTime: number = _.min(filesModifiedTimes);
+    // TODO just sort the files by name right after they are received
+    const oldestFileIndex: number = _.findIndex(
       filesModifiedTimes,
-      item => item === firstFileLastModified
+      item => item === oldestFileModificationTime
     );
 
     const firstFileLengthInSeconds = shell.exec(
       // TODO this is executed twice for first file, refactor!
+      // make `durationOfAllRecordedParts` just array and use _.sum
       `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${
-        files[firstFileLastModifiedIndex]
+        files[oldestFileIndex]
       }"`
     );
 
@@ -63,14 +65,14 @@ export const caclRecordingOffset = (
       _.toNumber(firstFileLengthInSeconds.stdout) * 1000
     );
     const recordingStarted = luxon.DateTime.fromMillis(
-      firstFileLastModified * 1000
+      oldestFileModificationTime * 1000
     ).minus(firstFileDuration);
 
     const fromRecordingStartedToNow = luxon.DateTime.local().diff(
       recordingStarted
     );
 
-    const t = files[firstFileLastModifiedIndex].split("_");
+    const t = files[oldestFileIndex].split("_");
     const secondsBeforeGameStartTimeRecordingHasStarted = _.parseInt(
       t[t.length - 1]
     );
@@ -83,7 +85,7 @@ export const caclRecordingOffset = (
         )
       )
       .diff(gameStart);
-    filenameSuffix = "" + files.length;
+    filenameSuffix = "part" + files.length;
   } else {
     if (
       luxon.DateTime.local().valueOf() > gameStart.valueOf() &&
@@ -91,13 +93,13 @@ export const caclRecordingOffset = (
     ) {
       // if game has started and setting is set to record from the start
       offsetBackToStartRecordingAt = luxon.DateTime.local().diff(gameStart);
-      filenameSuffix = "_0";
+      filenameSuffix = 0;
     } else {
       // TODO check that 00:00:01 hack is no longer required
       // https://github.com/streamlink/streamlink/issues/1419
       // just drop this 1000ms
       offsetBackToStartRecordingAt = luxon.Duration.fromMillis(1000);
-      filenameSuffix = "_" + _.toInteger(gameStart.diffNow().as("second"));
+      filenameSuffix = _.toInteger(gameStart.diffNow().as("second"));
     }
   }
 
@@ -113,7 +115,7 @@ export const caclRecordingOffset = (
   }
 
   return {
-    finalFilename: baseFilename + filenameSuffix,
+    finalFilename: [baseFilename, filenameSuffix].join('_'),
     durationOffset
   };
 };

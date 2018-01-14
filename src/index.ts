@@ -128,7 +128,7 @@ const main = async () => {
     game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
     "(" + mediaFeedType + (callLetters && "_") + callLetters + ")",
     stream.resolution,
-    mediaState === MEDIA_STATE.ON ? 'live' : 'archive'
+    mediaState === MEDIA_STATE.ON ? "live" : "archive"
   ].join("_");
 
   const recordingOffset = caclRecordingOffset(

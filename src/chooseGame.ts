@@ -83,7 +83,7 @@ const renderGameName = (
     streamsAvailable(game) &&
     game.status.detailedState === GAME_DETAILED_STATE.SCHEDULED
   ) {
-    name += " sone to start";
+    name += " soon to start";
   }
   if (
     streamsAvailable(game, [MEDIA_STATE.ON]) &&

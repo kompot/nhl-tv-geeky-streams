@@ -28,7 +28,10 @@ import { getAuthSession } from "./auth";
 import { chooseGame } from "./chooseGame";
 import { chooseStream } from "./chooseStream";
 import { DateTime, Duration } from "luxon";
-import { caclRecordingOffset } from "./calcRecordingOffset";
+import {
+  calcRecordingOffset,
+  persistFirstFileCreationTime
+} from "./calcRecordingOffset";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
@@ -131,7 +134,7 @@ const main = async () => {
     mediaState === MEDIA_STATE.ON ? "live" : "archive"
   ].join("_");
 
-  const recordingOffset = caclRecordingOffset(
+  const recordingOffset = calcRecordingOffset(
     filename,
     game,
     mediaState,
@@ -153,7 +156,12 @@ const main = async () => {
 
   const streamStart = spawn("streamlink", streamlinkOptions);
 
+  let recordStartTimePersisted = false;
+
   streamStart.stdout.on("data", data => {
+    if (!recordStartTimePersisted && recordingOffset.filesLength === 0) {
+      persistFirstFileCreationTime(filename, new Date());
+    }
     console.log(`stdout: ${data}`);
   });
 

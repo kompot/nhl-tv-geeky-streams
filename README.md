@@ -5,6 +5,10 @@ to run this and be familiar with terminal.
 
 Blackouts are not worked around in any way (and everything will probably just fail, have not tested it). You need a VPN connection if you'd like to watch all games.
 
+# Demo
+
+<a href="https://asciinema.org/a/157500" target="_blank"><img src="https://asciinema.org/a/157500.png" /></a>
+
 # Usage
 
 1. [Download](https://github.com/kompot/nhl-tv-geeky-streams/archive/master.zip) latest version of this repository and unzip it anywhere.

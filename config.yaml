@@ -2,8 +2,10 @@
 # https://en.wikipedia.org/wiki/YAML#Basic_components
 
 # specify your NHL.TV account email
+# email: johndoe@gmail.com
 email:
 # and password
+# password: johnDoesNhlTvPassword
 password:
 
 # dates for matches will be shown in this time zone

@@ -6,6 +6,7 @@ import { spawn } from "child_process";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as luxon from "luxon";
+import chalk from "chalk";
 
 import {
   NhlStatsApi,
@@ -21,7 +22,8 @@ import {
   Response,
   STATUS_CODE,
   CDN,
-  SESSION_ATTRIBUTE_NAME
+  SESSION_ATTRIBUTE_NAME,
+  BLACKOUT_STATUS
 } from "./nhlMfApi";
 
 import { getAuthSession } from "./auth";
@@ -52,8 +54,10 @@ export interface Config {
 
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
 
-const main = async () => {
-  const game = await chooseGame(config);
+const main = async (
+  date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
+) => {
+  const [game, dateLastSelected] = await chooseGame(config, date);
 
   const feedOptions = game.content.media.epg
     .find(e => e.title === EpgTitle.NHLTV)
@@ -114,11 +118,27 @@ const main = async () => {
   //   JSON.stringify((r1.data as Response.Playlist), null, 2)
   // );
 
-  const mediaAuth = (r1.data as Response.Playlist).session_info.sessionAttributes.find(
+  const mediaStream = r1.data as Response.Playlist;
+
+  if (
+    mediaStream.user_verified_event[0].user_verified_content[0]
+      .user_verified_media_item[0].blackout_status.status ===
+    BLACKOUT_STATUS.BLACKED_OUT
+  ) {
+    console.log(
+      chalk.yellow(
+        "This game is blacked out in your region. Try using VPN or select another game."
+      )
+    );
+    return main(dateLastSelected);
+  }
+
+  const mediaAuth = mediaStream.session_info.sessionAttributes.find(
     sa => sa.attributeName === SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2
   ).attributeValue;
-  const masterUrl = (r1.data as Response.Playlist).user_verified_event[0]
-    .user_verified_content[0].user_verified_media_item[0].url;
+  const masterUrl =
+    mediaStream.user_verified_event[0].user_verified_content[0]
+      .user_verified_media_item[0].url;
 
   const stream = await chooseStream(masterUrl);
 

@@ -137,8 +137,8 @@ export const chooseGame = async (
   config: Config,
   // will set timezone to somewhat central US so that we always get all metches
   // for current US day, even if you are actually in Asia
-  date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
-): Promise<Game> => {
+  date: luxon.DateTime
+): Promise<[Game, luxon.DateTime]> => {
   const { data: { dates } } = await statsApi.request({
     url: "/schedule",
     params: {
@@ -202,5 +202,5 @@ export const chooseGame = async (
   const game = games.find(
     game => String(game.gamePk) === gameSelected[questionNameGame]
   );
-  return game;
+  return [game, date];
 };

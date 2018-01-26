@@ -14,7 +14,7 @@ enum AUTH_STATUS {
   NOT_AUTHORIZED = "NotAuthorizedStatus"
 }
 
-enum BLACKOUT_STATUS {
+export enum BLACKOUT_STATUS {
   SUCCESS = "SuccessStatus",
   BLACKED_OUT = "BlackedOutStatus"
 }

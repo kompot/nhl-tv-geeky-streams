@@ -3,7 +3,7 @@ or Linux. NHL.TV account **is required**. You need
 [Docker](https://www.docker.com/community-edition#/download) installed
 to run this and be familiar with terminal.
 
-Blackouts are not worked around in any way (and everything will probably just fail, have not tested it). You need a VPN connection if you'd like to watch all games.
+Blackouts are not worked around in any way. `This game is blacked out in your region. Try using VPN or select another game.` message will be displayed in that case.
 
 # Demo
 

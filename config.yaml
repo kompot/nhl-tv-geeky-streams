@@ -8,10 +8,9 @@ email:
 # password: johnDoesNhlTvPassword
 password:
 
-# dates for matches will be shown in this time zone
-# default is set the way that all matches for the given day
-# are within 1 day in this timezone
-# should probably leave this as is
+# this timezone is used to determine `today`, point in time from where to start
+# showing matches; should probably leave this as is
+# if set to like, Tokyo, you will always see tomorrow's matches
 matchTimeZone: America/Denver
 
 # do not jump into the middle of a game, always start from beginning

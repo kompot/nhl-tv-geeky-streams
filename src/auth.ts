@@ -28,7 +28,7 @@ const userApi = axiosRestyped.create<NhlUserApi>({
   baseURL: "https://user.svc.nhl.com"
 });
 
-interface AuthSession {
+export interface AuthSession {
   authHeader: string;
   sessionKey: string;
 }
@@ -80,23 +80,33 @@ export const getAuthSession = async (
       }
     }
   );
-  const r = await userApi.post(
-    "/v2/user/identity",
-    {
-      email: {
-        address: email
+  let r;
+  try {
+    r = await userApi.post(
+      "/v2/user/identity",
+      {
+        email: {
+          address: email
+        },
+        type: USER_IDENTITY_TYPE.EmailPassword,
+        password: {
+          value: password
+        }
       },
-      type: USER_IDENTITY_TYPE.EmailPassword,
-      password: {
-        value: password
+      {
+        headers: {
+          Authorization: access_token
+        }
       }
-    },
-    {
-      headers: {
-        Authorization: access_token
-      }
+    );
+  } catch (e) {
+    if (e.response.status === 401) {
+      throw new Error(
+        "Unable to login to nhl.com. Username or password incorrect."
+      );
     }
-  );
+    throw e;
+  }
   const authorizationCookie = r.headers["set-cookie"]
     .map(cookie.parse)
     .find(ck => ck.Authorization);

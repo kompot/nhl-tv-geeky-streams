@@ -26,7 +26,7 @@ import {
   BLACKOUT_STATUS
 } from "./nhlMfApi";
 
-import { getAuthSession } from "./auth";
+import { getAuthSession, AuthSession } from "./auth";
 import { chooseGame } from "./chooseGame";
 import { chooseStream } from "./chooseStream";
 import { DateTime, Duration } from "luxon";
@@ -97,7 +97,15 @@ const main = async (
     mediaState
   ] = feedSelected[questionNameFeed].split("|");
 
-  const auth = await getAuthSession(config.email, config.password, eventId);
+  let auth: AuthSession | undefined;
+  try {
+    auth = await getAuthSession(config.email, config.password, eventId);
+  } catch (e) {
+    console.log(
+      chalk.yellow(e.message)
+    );
+    return;
+  }
 
   const r1 = await mfApi.request({
     url: "/ws/media/mf/v2.4/stream",

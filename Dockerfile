@@ -12,14 +12,8 @@ RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources
 RUN apt-get update && apt-get install -y yarn
 
 # install streamlink
-# TODO rollback to `pip install streamlink` right after 0.10.0 is released
-# and `hls-start-offset` option is supported in stable release
-RUN apt-get install -y python-pip git
-# RUN pip install streamlink
-WORKDIR /usr/src
-RUN git clone https://github.com/streamlink/streamlink
-WORKDIR /usr/src/streamlink
-RUN python setup.py install
+RUN apt-get install -y python-pip
+RUN pip install streamlink
 RUN pip install pycryptodome
 
 # install ffmpeg

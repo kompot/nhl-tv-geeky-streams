@@ -7,7 +7,7 @@ RUN apk --no-cache add \
     python \
   && pip install streamlink \
   && pip install pycryptodome \
-  && apk del build-base
+  && apk --no-cache del build-base
 
 WORKDIR /app/
 COPY package.json /app/

@@ -17,3 +17,4 @@ RUN yarn install
 COPY . /app/
 
 CMD [ "yarn", "start" ]
+USER node

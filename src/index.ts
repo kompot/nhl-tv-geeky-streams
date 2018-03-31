@@ -188,6 +188,7 @@ const main = async (
 
   streamStart.stdout.on("data", data => {
     if (!recordStartTimePersisted && recordingOffset.filesLength === 0) {
+      recordStartTimePersisted = true;
       persistFirstFileCreationTime(filename, new Date());
     }
     console.log(`stdout: ${data}`);

@@ -2,11 +2,11 @@ import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import axios from "axios";
 import * as _ from "lodash";
-import { spawn } from "child_process";
+import chalk from "chalk";
+
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as luxon from "luxon";
-import chalk from "chalk";
 
 import {
   NhlStatsApi,
@@ -34,6 +34,7 @@ import {
   calcRecordingOffset,
   persistFirstFileCreationTime
 } from "./calcRecordingOffset";
+import { download } from "./download";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
@@ -169,38 +170,7 @@ const main = async (
     config
   );
 
-  const streamlinkOptions = [
-    "-o",
-    `./video/${recordingOffset.finalFilename}.mp4`,
-    "--hls-start-offset",
-    recordingOffset.durationOffset.toFormat("hh:mm:ss"),
-    `--http-cookie`,
-    "Authorization=" + auth.authHeader,
-    `--http-cookie`,
-    SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
-    stream.url,
-    "best"
-  ];
-
-  const streamStart = spawn("streamlink", streamlinkOptions);
-
-  let recordStartTimePersisted = false;
-
-  streamStart.stdout.on("data", data => {
-    if (!recordStartTimePersisted && recordingOffset.filesLength === 0) {
-      recordStartTimePersisted = true;
-      persistFirstFileCreationTime(filename, new Date());
-    }
-    console.log(`stdout: ${data}`);
-  });
-
-  streamStart.stderr.on("data", data => {
-    console.log(`stderr: ${data}`);
-  });
-
-  streamStart.on("close", code => {
-    console.log(`child process exited with code ${code}`);
-  });
+  download(filename, recordingOffset, auth, mediaAuth, stream);
 };
 
 main();

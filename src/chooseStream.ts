@@ -17,7 +17,7 @@ const streamOption = pl => {
   };
 };
 
-interface IStream {
+export interface IStream {
   url: string;
   resolution: string;
 }

@@ -7,7 +7,7 @@ import * as fs from "fs";
 import { MEDIA_STATE, Game } from "./nhlStatsApi";
 import { Config } from "./index";
 
-interface OffsetObject {
+export interface OffsetObject {
   finalFilename: string;
   // this is used for https://streamlink.github.io/cli.html#cmdoption-hls-start-offset
   // and has differend meaning for live and archive matches

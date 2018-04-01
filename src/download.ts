@@ -13,6 +13,19 @@ import { IStream } from "./chooseStream";
 
 const processName = "streamlink";
 
+// can be `1.2 KB`, `5.2 MB`, `9.1 GB`, probably others, it's streamlink's
+// proprietary output format
+const sizeInMb = (l: string) => {
+  let multiplier = 1;
+  if (l.indexOf("GB") !== -1) {
+    multiplier = 1024;
+  }
+  if (l.indexOf("KB") !== -1) {
+    multiplier = 1 / 1024;
+  }
+  return _.round(parseFloat(l) * multiplier, 2);
+};
+
 export const download = (
   filename: string,
   recordingOffset: OffsetObject,
@@ -51,21 +64,14 @@ export const download = (
 
   const progressMarker = "[download]";
 
-  const lastDataChunkSizeInMB = 0;
-  const lastDataChunkTimestamp = Date.now();
+  const initTs = Date.now();
 
   streamStart.stderr.on("data", data => {
     const dataAsString = (data as Buffer).toString();
     if (dataAsString.indexOf(progressMarker) === 1) {
       const l = dataAsString.substr(progressMarker.length + 1);
-      const mb = parseFloat(l) * (l.indexOf("GB") !== -1 ? 1024 : 1);
-
-      const downloadSpeed = _.round(
-        (mb - lastDataChunkSizeInMB) /
-          ((Date.now() - lastDataChunkTimestamp) / 1000),
-        2
-      );
-
+      const mb = sizeInMb(l);
+      const downloadSpeed = _.round(mb / ((Date.now() - initTs) / 1000), 2);
       readline.clearLine(process.stdout, 0);
       readline.cursorTo(process.stdout, 0);
       process.stderr.write(

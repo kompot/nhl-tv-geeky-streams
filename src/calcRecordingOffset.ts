@@ -14,17 +14,21 @@ export interface OffsetObject {
   // Amount of time to skip from the beginning of the stream. For live streams, this is a negative offset from the end of the stream.
   durationOffset: luxon.Duration;
   filesLength: number;
-  recordingStart: number,
+  recordingStart: number;
   recordingOffset: number;
 }
 
 const recordsFile = "./tmp/records.json";
 
-export const persistFirstFileCreationTimeAndOffset = (filename: string, recordingStart: number, recordingOffset: number) => {
+export const persistFirstFileCreationTimeAndOffset = (
+  filename: string,
+  recordingStart: number,
+  recordingOffset: number
+) => {
   const json = readRecords();
   json[filename] = {
     recordingStart,
-    recordingOffset,
+    recordingOffset
   };
   fs.writeFileSync(recordsFile, JSON.stringify(json, null, 2));
 };
@@ -56,13 +60,13 @@ export const calcRecordingOffset = (
   let recordingStart = Date.now();
   if (files.length) {
     const creationTimeAndOffset = readRecords()[baseFilename];
-    const recordingStarted = luxon.DateTime.fromMillis(creationTimeAndOffset.recordingStart);
+    const recordingStarted = luxon.DateTime.fromMillis(
+      creationTimeAndOffset.recordingStart
+    );
     offsetBackToStartRecordingAt = luxon.DateTime.local()
       .diff(recordingStarted)
       .plus(
-        luxon.Duration.fromMillis(
-          creationTimeAndOffset.recordingOffset * 1000
-        )
+        luxon.Duration.fromMillis(creationTimeAndOffset.recordingOffset * 1000)
       );
     filenameSuffix = "part" + files.length;
   } else {
@@ -89,16 +93,25 @@ export const calcRecordingOffset = (
 
   let durationOfAllRecordedParts = 0;
 
+  if (files.length) {
+    console.log(`Duration of previously recorded files:`);
+  }
+
   files.forEach((file: string, idx: number) => {
     const res = shell.exec(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${file}"`
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${file}"`,
+      {
+        silent: true
+      }
     );
-    durationOfAllRecordedParts += _.toNumber(res.stdout);
+    const partDuration = _.toNumber(res.stdout) * 1000;
+    console.log(
+      `${file}: ${Duration.fromMillis(partDuration).toFormat("hh:mm:ss")}`
+    );
+    durationOfAllRecordedParts += partDuration;
   });
 
-  const totalRecordedDuration = Duration.fromMillis(
-    durationOfAllRecordedParts * 1000
-  );
+  const totalRecordedDuration = Duration.fromMillis(durationOfAllRecordedParts);
 
   const partConnectionCompensation =
     files.length === 0 ? 0 : luxon.Duration.fromMillis(1 * 1000);

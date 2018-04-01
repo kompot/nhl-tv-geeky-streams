@@ -32,7 +32,7 @@ import { chooseStream } from "./chooseStream";
 import { DateTime, Duration } from "luxon";
 import {
   calcRecordingOffset,
-  persistFirstFileCreationTime
+  persistFirstFileCreationTimeAndOffset
 } from "./calcRecordingOffset";
 import { download } from "./download";
 

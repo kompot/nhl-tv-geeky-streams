@@ -5,7 +5,7 @@ import * as _ from "lodash";
 
 import {
   OffsetObject,
-  persistFirstFileCreationTime
+  persistFirstFileCreationTimeAndOffset
 } from "./calcRecordingOffset";
 import { SESSION_ATTRIBUTE_NAME } from "./nhlMfApi";
 import { AuthSession } from "./auth";
@@ -40,7 +40,11 @@ export const download = (
   streamStart.stdout.on("data", data => {
     if (!recordStartTimePersisted && recordingOffset.filesLength === 0) {
       recordStartTimePersisted = true;
-      persistFirstFileCreationTime(filename, new Date());
+      persistFirstFileCreationTimeAndOffset(
+        filename,
+        recordingOffset.recordingStart,
+        recordingOffset.recordingOffset
+      );
     }
     console.log(`${processName}: ${data}`);
   });

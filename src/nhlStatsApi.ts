@@ -84,7 +84,7 @@ export interface Game {
   link: Url;
   content: {
     link: Url;
-    media: {
+    media?: {
       epg: Epg[];
     };
   };

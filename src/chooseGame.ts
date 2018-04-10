@@ -109,7 +109,8 @@ const streamsAvailable = (
   mediaStatesToCheckFor: MEDIA_STATE[] = [MEDIA_STATE.ON, MEDIA_STATE.ARCHIVE]
 ): boolean =>
   _.some(
-    game.content.media.epg.find(e => e.title === EpgTitle.NHLTV).items,
+    game.content.media &&
+      game.content.media.epg.find(e => e.title === EpgTitle.NHLTV).items,
     item => _.some(mediaStatesToCheckFor, ms => ms === item.mediaState)
   );
 

@@ -24,7 +24,11 @@ playLiveGamesFromStart: true
 # favouriteTeams: [WSH, PIT, TBL]
 favouriteTeams: []
 
-
+# add extra options to streamlink
+# e. g. if you have a fast connection you can significantly reduce download
+# times by using more than 1 threads
+# streamlinkExtraOptions: [--hls-segment-threads, 2]
+streamlinkExtraOptions: []
 
 
 

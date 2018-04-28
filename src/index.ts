@@ -49,6 +49,7 @@ export interface Config {
   matchTimeZone: string;
   playLiveGamesFromStart?: boolean;
   favouriteTeams?: string[];
+  streamlinkExtraOptions?: string[];
   skipOtherTeams?: boolean;
   startDownloadingIfSingleGameFound: true;
 }
@@ -170,7 +171,14 @@ const main = async (
     config
   );
 
-  download(filename, recordingOffset, auth, mediaAuth, stream);
+  download(
+    filename,
+    recordingOffset,
+    auth,
+    mediaAuth,
+    stream,
+    config.streamlinkExtraOptions
+  );
 };
 
 main();

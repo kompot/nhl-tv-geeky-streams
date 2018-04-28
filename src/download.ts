@@ -31,9 +31,10 @@ export const download = (
   recordingOffset: OffsetObject,
   auth: AuthSession,
   mediaAuth: string,
-  stream: IStream
+  stream: IStream,
+  streamlinkExtraOptions: string[] = []
 ) => {
-  const streamlinkOptions = [
+  const streamlinkBaseOptions = [
     "-o",
     `./video/${recordingOffset.finalFilename}.mp4`,
     "--hls-start-offset",
@@ -46,7 +47,10 @@ export const download = (
     "best"
   ];
 
-  const streamStart = spawn(processName, streamlinkOptions);
+  const streamStart = spawn(processName, [
+    ...streamlinkBaseOptions,
+    ...streamlinkExtraOptions
+  ]);
 
   let recordStartTimePersisted = false;
 

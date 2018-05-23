@@ -1,7 +1,5 @@
 Best way to download NHL.TV games (both live and archive) to your Mac, PC
-or Linux. NHL.TV account **is required**. You need
-[Docker](https://www.docker.com/community-edition#/download) installed
-to run this and be familiar with terminal.
+or Linux. NHL.TV account **is required**. You should be familiar with terminal.
 
 Blackouts are not worked around in any way. `This game is blacked out in your region. Try using VPN or select another game.` message will be displayed in that case.
 
@@ -11,19 +9,20 @@ Blackouts are not worked around in any way. `This game is blacked out in your re
 
 # Usage
 
-1. [Download](https://github.com/kompot/nhl-tv-geeky-streams/archive/master.zip) latest version of this repository and unzip it anywhere.
-2. Edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login to official NHL sites). Explore other options available.
-3. Run
+Edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login to official NHL sites). Explore other options available.
 
-   ```
-   docker-compose run --rm nhltv
-   ```
+Video will be downloaded to `./video` folder. This location can be customized in `.env` file.
 
-   in the directory where you've unzipped it to.
+[Download](https://github.com/kompot/nhl-tv-geeky-streams/archive/master.zip) latest version of this repository and unzip it anywhere.
 
-4. Wait for several minutes for image to be built.
-5. Select game and stream type.
-6. Video will be downloaded to `./video` folder. This location can be customized in `.env` file.
+## With [Docker](https://www.docker.com/community-edition#/download)
+
+- Run `docker-compose run --rm nhltv` in the directory where you've unzipped code to.
+
+## Without Docker, much less resource hungry, instructions for macOS
+
+- Install dependencies with `brew install yarn streamlink ffmpeg`.
+- Run `yarn start` in the directory where you've unzipped code to.
 
 # Credits
 

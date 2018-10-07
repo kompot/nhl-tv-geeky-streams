@@ -4,7 +4,9 @@ RUN apk --no-cache add \
     build-base \
     ffmpeg \
     py-pip \
-    python \
+    python-dev \
+    libffi-dev \
+    openssl-dev \
   && pip install streamlink \
   && pip install pycryptodome \
   && apk --no-cache del build-base

@@ -1,4 +1,4 @@
-FROM node:alpine
+FROM node:10.11-alpine
 
 RUN apk --no-cache add \
     build-base \

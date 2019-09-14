@@ -23,6 +23,7 @@ export const download = (
   const streamlinkBaseOptions = [
     "-o",
     `./video/${recordingOffset.finalFilename}.mp4`,
+    "--force-progress",
     "--hls-start-offset",
     recordingOffset.durationOffset.toFormat("hh:mm:ss"),
     `--http-cookie`,

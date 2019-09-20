@@ -167,19 +167,27 @@ export const chooseGame = async (
     }
   ];
   const allGamesHaveStreamsAvailable = _.every(games, streamsAvailable);
-  dates.forEach(matchDay => {
-    gamesOptions.push(new inquirer.Separator(" "));
-    gamesOptions.push(new inquirer.Separator(matchDay.date));
-    gamesOptions.push(new inquirer.Separator(" "));
-    matchDay.games.forEach(game => {
-      gamesOptions.push({
-        value: String(game.gamePk),
-        name: renderGameName(game, config, allGamesHaveStreamsAvailable),
-        disabled: isGameDisabledForDownloadAndReasonWhy(game)
+  if (dates.length > 0) {
+    dates.forEach(matchDay => {
+      gamesOptions.push(new inquirer.Separator(" "));
+      gamesOptions.push(new inquirer.Separator(matchDay.date));
+      gamesOptions.push(new inquirer.Separator(" "));
+      matchDay.games.forEach(game => {
+        gamesOptions.push({
+          value: String(game.gamePk),
+          name: renderGameName(game, config, allGamesHaveStreamsAvailable),
+          disabled: isGameDisabledForDownloadAndReasonWhy(game)
+        });
       });
+      gamesOptions.push(new inquirer.Separator(" "));
     });
+  } else {
     gamesOptions.push(new inquirer.Separator(" "));
-  });
+    gamesOptions.push(new inquirer.Separator(date.toLocaleString()));
+    gamesOptions.push(new inquirer.Separator(" "));
+    gamesOptions.push(new inquirer.Separator("  (no games found)"));
+    gamesOptions.push(new inquirer.Separator(" "));
+  }
   gamesOptions.push({
     value: DIRECTION.FORWARD,
     name: "⤻  one day forward"

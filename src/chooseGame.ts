@@ -3,6 +3,7 @@ import axiosRestyped from "restyped-axios";
 import * as _ from "lodash";
 import * as luxon from "luxon";
 import chalk from "chalk";
+import * as fs from "fs";
 
 import {
   NhlStatsApi,
@@ -23,6 +24,8 @@ enum DIRECTION {
   BACK = "back",
   FORWARD = "forward"
 }
+
+const gamesFile = "./tmp/games.json";
 
 const isFavouriteTeam = (
   team: Team,
@@ -121,7 +124,10 @@ const isGameDisabledForDownloadAndReasonWhy = (
   if (!streamsAvailable(game)) {
     const dt = luxon.DateTime.fromISO(game.gameDate);
     const dur = dt.diffNow();
-    if (dur.as("hour") < 24) {
+    const durAsHour = dur.as("hour");
+    if (durAsHour < 0) {
+      disabled = chalk.gray("no streams available");
+    } else if (durAsHour < 24) {
       disabled = "starts in ";
       disabled += dur.toFormat("h:mm");
     } else {
@@ -149,6 +155,8 @@ export const chooseGame = async (
         "schedule.game.content.media.epg,schedule.teams,schedule.linescore"
     }
   });
+  
+  fs.writeFileSync(gamesFile, JSON.stringify(dates, null, 2));
 
   const games = _.flatMap(dates, matchDay => matchDay.games);
 

@@ -36,7 +36,7 @@ export const chooseStream = async (masterUrl: string): Promise<IStream> => {
   ).map(streamOption);
 
   const questionNameStream = "stream";
-  const questionsStream: inquirer.Question[] = [
+  const questionsStream: inquirer.ListQuestion[] = [
     {
       type: "list",
       name: questionNameStream,

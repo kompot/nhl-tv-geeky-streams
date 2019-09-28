@@ -160,7 +160,7 @@ export const chooseGame = async (
 
   const games = _.flatMap(dates, matchDay => matchDay.games);
 
-  let gamesOptions: inquirer.ChoiceType[] = [
+  let gamesOptions: inquirer.DistinctChoice<inquirer.ListChoiceMap>[] = [
     {
       value: DIRECTION.BACK,
       name: "⤺  one day back"
@@ -195,7 +195,7 @@ export const chooseGame = async (
 
   const questionNameGame = "game";
 
-  const questionsGame: inquirer.Question[] = [
+  const questionsGame: inquirer.ListQuestion[] = [
     {
       type: "list",
       // number of teams divided by 2 (16), maximum match number for 1 day

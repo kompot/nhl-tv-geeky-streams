@@ -80,7 +80,7 @@ const main = async (
 
   const questionNameFeed = "feed";
 
-  const questionsFeed: inquirer.Question[] = [
+  const questionsFeed: inquirer.ListQuestion[] = [
     {
       type: "list",
       name: questionNameFeed,

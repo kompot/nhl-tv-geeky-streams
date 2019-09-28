@@ -1,4 +1,4 @@
-FROM node:10.11-alpine
+FROM node:12.10-alpine
 
 RUN apk --no-cache add \
     build-base \
@@ -8,7 +8,7 @@ RUN apk --no-cache add \
     python-dev \
     libffi-dev \
     openssl-dev \
-  && pip3 install pycryptodome \
+  && pip3 --disable-pip-version-check install pycryptodome \
   && apk --no-cache del build-base
 
 # TODO rollback to `pip3 install streamlink` once it supports download progress again.

@@ -10,12 +10,13 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
+      # map the config and src to avoid always having to rebuild the container after changes
+      - ./config.yaml:/app/config.yaml
+      - ./src:/app/src
       # logs, session data
       - ./tmp:/app/tmp
+      # downloads
       - ${DOWNLOAD_DIR}:/app/video
-      - node_modules:/app/node_modules
-
-volumes:
-  node_modules:
-    # driver: local  # is already local by default
+      # uncomment when modifying dependencies
+      #- ./package.json:/app/package.json
+      #- ./yarn.lock:/app/yarn.lock

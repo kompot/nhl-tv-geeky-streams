@@ -21,9 +21,10 @@ RUN python3 setup.py install
 WORKDIR /app/
 COPY package.json /app/
 COPY yarn.lock /app/
+RUN chown -R node:node /app
+
+USER node
+
 RUN yarn install
 
-COPY . /app/
-
 CMD [ "yarn", "start" ]
-USER node

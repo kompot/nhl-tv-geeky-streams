@@ -1,75 +1,57 @@
-import axios from "axios";
-import * as m3u8Parser from "m3u8-parser";
-import * as _ from "lodash";
-import * as inquirer from "inquirer";
 import chalk from "chalk";
+import * as inquirer from "inquirer";
+import * as _ from "lodash";
 
 import {
-  Config,
   ProcessedStream,
+  ProcessedStreamList,
+  StreamSelection,
 } from './geekyStreamsApi';
 
-const processStream = (
-  pl: any,
-  masterUrl: string
-): ProcessedStream => {
-  const framerate = pl.attributes["FRAME-RATE"]
-    ? _.round(pl.attributes["FRAME-RATE"])
-    : "";
-  const rows = pl.attributes.RESOLUTION.height;
-  const resolution = `${rows}p${framerate}`;
-  const bandwidth = pl.attributes.BANDWIDTH;
-  const bitrate = chalk.gray("" + bandwidth / 1000 + "k");
-  const displayName = _.padEnd(resolution, 6) + " " + bitrate;
-  const downloadUrl = masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + pl.uri;
+const renderStreamName = (
+  processedStream: ProcessedStream,
+  isPreferredStream: boolean,
+) => {
+  const paddedResolution = _.padEnd(processedStream.resolution, 6)
+  const resolutionName = isPreferredStream ? chalk.yellow(paddedResolution) : paddedResolution;
+  const displayName = resolutionName + " " + chalk.gray(processedStream.bitrate);
+  return displayName;
+};
 
-  return {
-    bandwidth,
-    bitrate,
-    displayName,
-    downloadUrl,
-    resolution,
-  };
-}
-
-const getStreams = async (
-  masterUrl: string,
-  preferredQuality: string,
-): Promise<ProcessedStream[]> => {
-  const masterPlaylistContent = await axios.get(masterUrl);
-
-  const parser = new m3u8Parser.Parser();
-  parser.push(masterPlaylistContent.data);
-  parser.end();
-
-  const streams: ProcessedStream[] = parser.manifest.playlists.map(playlist => {
-    return processStream(playlist, masterUrl);
+const renderStreams = (
+  streamList: ProcessedStreamList
+): void => {
+  streamList.streams.forEach(stream => {
+    stream.displayName = renderStreamName(stream, stream === streamList.preferredStream);
   });
-  streams.sort((x, y) => y.bandwidth - x.bandwidth);
-
-  if (preferredQuality && streams.length > 0) {
-    let preferredStream: ProcessedStream = null;
-    if (preferredQuality === "best") {
-      preferredStream = streams[0];
-    } else if (preferredQuality === "worst") {
-      preferredStream = streams[streams.length - 1];
-    } else {
-      preferredStream = streams.find(s => s.resolution === preferredQuality);
-    }
-    if (preferredStream) {
-      const resolution = chalk.yellow(_.padEnd(preferredStream.resolution, 6));
-      preferredStream.displayName = resolution + " " + preferredStream.bitrate;
-    }
-  }
-
-  return streams;
-}
+};
 
 export const chooseStream = async (
-  config: Config,
-  masterUrl: string
-): Promise<ProcessedStream> => {
-  const processedStreams = await getStreams(masterUrl, config.preferredStreamQuality);
+  streamList: ProcessedStreamList
+): Promise<StreamSelection> => {
+  const streamSelection: StreamSelection = {
+    auth: streamList.auth,
+    mediaAuth: streamList.mediaAuth,
+    selectNewGame: false,
+  }
+  if (streamList.isBlackedOut) {
+    console.log(
+      chalk.yellow(
+        "This game is blacked out in your region. Try using VPN or select another game."
+      )
+    );
+    streamSelection.selectNewGame = true;
+    return streamSelection;
+  }
+  if (streamList.unknownError) {
+    console.log(
+      chalk.yellow(streamList.unknownError)
+    );
+    return streamSelection;
+  }
+
+  renderStreams(streamList);
+  const processedStreams = streamList.streams;
   const streamOptions = processedStreams.map(processedStream => ({
     value: processedStream,
     name: processedStream.displayName,
@@ -86,6 +68,6 @@ export const chooseStream = async (
   ];
 
   const streamSelected = await inquirer.prompt(questionsStream);
-  const stream: ProcessedStream = streamSelected[questionNameStream];
-  return stream;
+  streamSelection.processedStream = streamSelected[questionNameStream];
+  return streamSelection;
 };

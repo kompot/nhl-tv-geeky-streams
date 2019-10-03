@@ -1,30 +1,17 @@
-import chalk from "chalk";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as luxon from "luxon";
-import axiosRestyped from "restyped-axios";
 
 import {
   getGameList,
+  getStreamList,
   Config,
-  ProcessedGame,
 } from './geekyStreamsApi';
 import {
   MEDIA_STATE
 } from "./nhlStatsApi";
-import {
-  NhlMfApi,
-  NhlMfApiBaseUrl,
-  PLAYBACK_SCENARIO,
-  FORMAT,
-  Response,
-  CDN,
-  SESSION_ATTRIBUTE_NAME,
-  BLACKOUT_STATUS
-} from "./nhlMfApi";
 
-import { getAuthSession, AuthSession } from "./auth";
 import { chooseFeed } from "./chooseFeed";
 import { chooseGame } from "./chooseGame";
 import { chooseStream } from "./chooseStream";
@@ -32,10 +19,6 @@ import {
   calcRecordingOffset,
 } from "./calcRecordingOffset";
 import { download } from "./download";
-
-const mfApi = axiosRestyped.create<NhlMfApi>({
-  baseURL: NhlMfApiBaseUrl
-});
 
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
 // don't hide other teams if none are favourited
@@ -48,101 +31,55 @@ const main = async (
   date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
 ) => {
   let dateLastSelected = date;
-  let processedGame: ProcessedGame;
   while (true) {
     const gameList = await getGameList(config, dateLastSelected);
     const gameSelection = await chooseGame(gameList);
     if (gameSelection.isDateChange) {
       dateLastSelected = gameSelection.newDate;
-    } else {
-      processedGame = gameSelection.processedGame;
-      break;
+      continue;
     }
-  }
-  const game = processedGame.game;
-  const processedFeed = await chooseFeed(processedGame.feedList);
-  const feed = processedFeed.epgItem;
 
-  let auth: AuthSession | undefined;
-  try {
-    auth = await getAuthSession(config.email, config.password, feed.eventId);
-  } catch (e) {
-    console.log(
-      chalk.yellow(e.message)
-    );
-    return;
-  }
-
-  const r1 = await mfApi.request({
-    url: "/ws/media/mf/v2.4/stream",
-    params: {
-      contentId: Number(feed.mediaPlaybackId),
-      playbackScenario: PLAYBACK_SCENARIO.HTTP_CLOUD_WIRED_60,
-      sessionKey: auth.sessionKey,
-      auth: "response",
-      format: FORMAT.JSON,
-      cdnName: CDN.AKAMAI
-    },
-    headers: {
-      Authorization: auth.authHeader
+    const processedGame = gameSelection.processedGame;
+    const game = processedGame.game;
+    const processedFeed = await chooseFeed(processedGame.feedList);
+    const feed = processedFeed.epgItem;
+    
+    const streamList = await getStreamList(config, processedFeed);  
+    const streamSelection = await chooseStream(streamList);
+    if (streamSelection.selectNewGame) {
+      continue;
+    } else if (!streamSelection.processedStream) {
+      return;
     }
-  });
-  // console.log(
-  //   "_____ r1",
-  //   JSON.stringify((r1.data as Response.Playlist), null, 2)
-  // );
 
-  const mediaStream = r1.data as Response.Playlist;
-
-  if (
-    mediaStream.user_verified_event[0].user_verified_content[0]
-      .user_verified_media_item[0].blackout_status.status ===
-    BLACKOUT_STATUS.BLACKED_OUT
-  ) {
-    console.log(
-      chalk.yellow(
-        "This game is blacked out in your region. Try using VPN or select another game."
-      )
+    const filename = [
+      luxon.DateTime.fromISO(game.gameDate)
+        .setZone(config.matchTimeZone)
+        .toISODate(),
+      game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
+      "at",
+      game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
+      "(" + feed.mediaFeedType + (feed.callLetters && "_") + feed.callLetters + ")",
+      streamSelection.processedStream.resolution,
+      feed.mediaState === MEDIA_STATE.ON ? "live" : "archive"
+    ].join("_");
+  
+    const recordingOffset = calcRecordingOffset(
+      filename,
+      game,
+      feed.mediaState,
+      config
     );
-    return main(dateLastSelected);
+  
+    return download(
+      filename,
+      recordingOffset,
+      streamSelection.auth,
+      streamSelection.mediaAuth,
+      streamSelection.processedStream,
+      config.streamlinkExtraOptions
+    );
   }
-
-  const mediaAuth = mediaStream.session_info.sessionAttributes.find(
-    sa => sa.attributeName === SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2
-  ).attributeValue;
-  const masterUrl =
-    mediaStream.user_verified_event[0].user_verified_content[0]
-      .user_verified_media_item[0].url;
-
-  const stream = await chooseStream(config, masterUrl);
-
-  const filename = [
-    luxon.DateTime.fromISO(game.gameDate)
-      .setZone(config.matchTimeZone)
-      .toISODate(),
-    game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
-    "at",
-    game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
-    "(" + feed.mediaFeedType + (feed.callLetters && "_") + feed.callLetters + ")",
-    stream.resolution,
-    feed.mediaState === MEDIA_STATE.ON ? "live" : "archive"
-  ].join("_");
-
-  const recordingOffset = calcRecordingOffset(
-    filename,
-    game,
-    feed.mediaState,
-    config
-  );
-
-  download(
-    filename,
-    recordingOffset,
-    auth,
-    mediaAuth,
-    stream,
-    config.streamlinkExtraOptions
-  );
 };
 
 main();

@@ -67,6 +67,7 @@ export interface ProcessedFeedList {
   isArchiveTvStreamAvailable: boolean;
   isLiveTvStreamAvailable: boolean;
   isTvStreamAvailable: boolean;
+  preferredFeeds: ProcessedFeed[];
 }
 
 export interface ProcessedGame {
@@ -84,6 +85,7 @@ export interface ProcessedGameList {
   games: ProcessedGame[];
   hiddenGames: ProcessedGame[];
   matchDay: MatchDay;
+  noGamesMessage: string;
   queryDate: luxon.DateTime;
 }
 
@@ -104,15 +106,20 @@ export interface ProcessedStreamList {
   unknownError: string;
 }
 
+export interface FeedSelection {
+  cancelSelection: boolean;
+  processedFeed?: ProcessedFeed;
+}
+
 export interface GameSelection {
+  cancelSelection: boolean;
   isDateChange: boolean;
   newDate?: luxon.DateTime;
   processedGame?: ProcessedGame;
 }
 
 export interface StreamSelection {
-  auth?: AuthSession;
-  mediaAuth: string;
+  cancelSelection: boolean;
   processedStream?: ProcessedStream;
   selectNewGame: boolean;
 }
@@ -122,6 +129,7 @@ const processFeeds = (
 ): ProcessedFeedList => {
   let isArchiveTvStreamAvailable = false;
   let isLiveTvStreamAvailable = false;
+  const preferredFeeds: ProcessedFeed[] = [];
   const feeds = processedGame.game.content.media.epg
     .find(e => e.title === EpgTitle.NHLTV)
     .items.map(epgItem => {
@@ -139,6 +147,9 @@ const processFeeds = (
       };
       isArchiveTvStreamAvailable = isArchiveTvStreamAvailable || isArchiveTvStream;
       isLiveTvStreamAvailable = isLiveTvStreamAvailable || isLiveTvStream;
+      if (processedFeed.isForFavouriteTeam) {
+        preferredFeeds.push(processedFeed);
+      }
       return processedFeed;
     });
 
@@ -147,6 +158,7 @@ const processFeeds = (
     isArchiveTvStreamAvailable,
     isLiveTvStreamAvailable,
     isTvStreamAvailable: isArchiveTvStreamAvailable || isLiveTvStreamAvailable,
+    preferredFeeds,
   };
 };
 
@@ -213,6 +225,7 @@ export const getGameList = async (
     games,
     hiddenGames,
     matchDay,
+    noGamesMessage: null,
     queryDate: date,
   };
 };

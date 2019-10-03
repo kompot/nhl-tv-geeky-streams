@@ -12,6 +12,7 @@
     "@types/lodash": "^4.14.91",
     "@types/luxon": "^1.15.2",
     "@types/shelljs": "^0.8.5",
+    "@types/yargs": "^13.0.3",
     "chalk": "^2.3.0",
     "cookie": "^0.4.0",
     "inquirer": "^7.0.0",
@@ -22,7 +23,8 @@
     "restyped-axios": "^2.0.0",
     "shelljs": "^0.8.3",
     "ts-node": "^8.4.1",
-    "typescript": "^3.6.3"
+    "typescript": "^3.6.3",
+    "yargs": "^14.0.0"
   },
   "scripts": {
     "start": "./node_modules/.bin/ts-node src/index.ts"

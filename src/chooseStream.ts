@@ -27,11 +27,11 @@ const renderStreams = (
 };
 
 export const chooseStream = async (
+  passive: boolean,
   streamList: ProcessedStreamList
 ): Promise<StreamSelection> => {
   const streamSelection: StreamSelection = {
-    auth: streamList.auth,
-    mediaAuth: streamList.mediaAuth,
+    cancelSelection: true,
     selectNewGame: false,
   }
   if (streamList.isBlackedOut) {
@@ -40,7 +40,8 @@ export const chooseStream = async (
         "This game is blacked out in your region. Try using VPN or select another game."
       )
     );
-    streamSelection.selectNewGame = true;
+    streamSelection.cancelSelection = false;
+    streamSelection.selectNewGame = !passive;
     return streamSelection;
   }
   if (streamList.unknownError) {
@@ -51,6 +52,16 @@ export const chooseStream = async (
   }
 
   renderStreams(streamList);
+  if (passive) {
+    return chooseStreamPassively(streamList);
+  } else {
+    return chooseStreamInteractively(streamList);
+  }
+};
+
+export const chooseStreamInteractively = async (
+  streamList: ProcessedStreamList
+): Promise<StreamSelection> => {
   const processedStreams = streamList.streams;
   const streamOptions = processedStreams.map(processedStream => ({
     value: processedStream,
@@ -68,6 +79,35 @@ export const chooseStream = async (
   ];
 
   const streamSelected = await inquirer.prompt(questionsStream);
-  streamSelection.processedStream = streamSelected[questionNameStream];
+  const streamSelection: StreamSelection = {
+    cancelSelection: false,
+    processedStream: streamSelected[questionNameStream],
+    selectNewGame: false,
+  };
+
+  return streamSelection;
+};
+
+export const chooseStreamPassively = async (
+  streamList: ProcessedStreamList
+): Promise<StreamSelection> => {
+  const processedStream = streamList.preferredStream;
+  const streamSelection: StreamSelection = {
+    cancelSelection: !processedStream,
+    processedStream: processedStream,
+    selectNewGame: false,
+  };
+  
+  if (streamSelection.cancelSelection) {
+    console.log(
+      chalk.yellow(
+        "The stream couldn't be autoselected."
+      )
+    );
+    streamList.streams.forEach(s => console.log(s.displayName));
+  } else {
+    console.log(streamSelection.processedStream.displayName);
+  }
+
   return streamSelection;
 };

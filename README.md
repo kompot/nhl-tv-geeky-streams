@@ -18,12 +18,14 @@ Video will be downloaded to `./video` folder. This location can be customized in
 ## With [Docker](https://www.docker.com/community-edition#/download)
 
 - Run `docker-compose run --rm nhltv` in the directory where you've unzipped code to.
+- You can also run `docker-compose run --rm nhltv yarn start --help` for info on command line options.
 
 ## Without Docker, much less resource hungry, instructions for macOS
 
 - Install dependencies with `brew install yarn streamlink ffmpeg`.
 - Run `yarn install` in the directory where you've unzipped code to.
 - Run `yarn start` in the directory where you've unzipped code to.
+- You can also run `yarn start --help` for info on command line options.
 
 # Credits
 

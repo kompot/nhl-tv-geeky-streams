@@ -1,13 +1,14 @@
-import axiosRestyped from "restyped-axios";
-import * as _ from "lodash";
 import chalk from "chalk";
-
-import * as yaml from "js-yaml";
 import * as fs from "fs";
+import * as yaml from "js-yaml";
+import * as _ from "lodash";
 import * as luxon from "luxon";
+import axiosRestyped from "restyped-axios";
 
 import {
+  getGameList,
   Config,
+  ProcessedGame,
 } from './geekyStreamsApi';
 import {
   MEDIA_STATE
@@ -42,10 +43,25 @@ const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.leng
 config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams;
 
 const main = async (
+  // will set timezone to somewhat central US so that we always get all matches
+  // for current US day, even if you are actually in Asia
   date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
 ) => {
-  const [game, dateLastSelected] = await chooseGame(config, date);
-  const feed = await chooseFeed(config, game);
+  let dateLastSelected = date;
+  let processedGame: ProcessedGame;
+  while (true) {
+    const gameList = await getGameList(config, dateLastSelected);
+    const gameSelection = await chooseGame(gameList);
+    if (gameSelection.isDateChange) {
+      dateLastSelected = gameSelection.newDate;
+    } else {
+      processedGame = gameSelection.processedGame;
+      break;
+    }
+  }
+  const game = processedGame.game;
+  const processedFeed = await chooseFeed(processedGame.feedList);
+  const feed = processedFeed.epgItem;
 
   let auth: AuthSession | undefined;
   try {

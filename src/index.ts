@@ -50,11 +50,14 @@ export interface Config {
   playLiveGamesFromStart?: boolean;
   favouriteTeams?: string[];
   streamlinkExtraOptions?: string[];
-  skipOtherTeams?: boolean;
+  hideOtherTeams?: boolean;
   startDownloadingIfSingleGameFound: true;
 }
 
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
+// don't hide other teams if none are favourited
+const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.length);
+config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams;
 
 const main = async (
   date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)

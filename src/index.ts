@@ -7,6 +7,9 @@ import * as fs from "fs";
 import * as luxon from "luxon";
 
 import {
+  Config,
+} from './geekyStreamsApi';
+import {
   MEDIA_STATE
 } from "./nhlStatsApi";
 import {
@@ -32,17 +35,6 @@ import { download } from "./download";
 const mfApi = axiosRestyped.create<NhlMfApi>({
   baseURL: NhlMfApiBaseUrl
 });
-
-export interface Config {
-  email: string;
-  password: string;
-  matchTimeZone: string;
-  playLiveGamesFromStart?: boolean;
-  favouriteTeams?: string[];
-  streamlinkExtraOptions?: string[];
-  hideOtherTeams?: boolean;
-  startDownloadingIfSingleGameFound: true;
-}
 
 var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
 // don't hide other teams if none are favourited

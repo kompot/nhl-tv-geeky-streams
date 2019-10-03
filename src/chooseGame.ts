@@ -7,6 +7,7 @@ import * as fs from "fs";
 
 import {
   isFavouriteTeam,
+  Config,
 } from "./geekyStreamsApi";
 import {
   MatchDay,
@@ -18,7 +19,6 @@ import {
   Team,
   GAME_DETAILED_STATE
 } from "./nhlStatsApi";
-import { Config } from "./index";
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl

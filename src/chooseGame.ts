@@ -6,6 +6,9 @@ import chalk from "chalk";
 import * as fs from "fs";
 
 import {
+  isFavouriteTeam,
+} from "./geekyStreamsApi";
+import {
   MatchDay,
   NhlStatsApi,
   NhlStatsApiBaseUrl,
@@ -27,11 +30,6 @@ enum DIRECTION {
 }
 
 const gamesFile = "./tmp/games.json";
-
-const isFavouriteTeam = (
-  team: Team,
-  favouriteTeamsAbbreviations: string[]
-): boolean => favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
 
 const hasFavouriteTeam = (
   game: Game,

@@ -30,9 +30,10 @@ export enum EpgTitle {
   RECAP = 'Recap',
 }
 
-enum MediaFeedType {
+export enum MediaFeedType {
   Home = "HOME",
   Away = "AWAY",
+  National = "NATIONAL",
   Composite = "COMPOSITE",
   Iso = "ISO"
 }

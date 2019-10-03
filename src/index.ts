@@ -98,7 +98,7 @@ const main = async (
     mediaStream.user_verified_event[0].user_verified_content[0]
       .user_verified_media_item[0].url;
 
-  const stream = await chooseStream(masterUrl);
+  const stream = await chooseStream(config, masterUrl);
 
   const filename = [
     luxon.DateTime.fromISO(game.gameDate)

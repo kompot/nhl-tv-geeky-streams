@@ -5,6 +5,7 @@ import * as inquirer from "inquirer";
 import chalk from "chalk";
 
 import {
+  Config,
   ProcessedStream,
 } from './geekyStreamsApi';
 
@@ -24,6 +25,7 @@ const processStream = (
 
   return {
     bandwidth,
+    bitrate,
     displayName,
     downloadUrl,
     resolution,
@@ -31,7 +33,8 @@ const processStream = (
 }
 
 const getStreams = async (
-  masterUrl: string
+  masterUrl: string,
+  preferredQuality: string,
 ): Promise<ProcessedStream[]> => {
   const masterPlaylistContent = await axios.get(masterUrl);
 
@@ -42,11 +45,31 @@ const getStreams = async (
   const streams: ProcessedStream[] = parser.manifest.playlists.map(playlist => {
     return processStream(playlist, masterUrl);
   });
-  return streams.sort((x, y) => y.bandwidth - x.bandwidth);
+  streams.sort((x, y) => y.bandwidth - x.bandwidth);
+
+  if (preferredQuality && streams.length > 0) {
+    let preferredStream: ProcessedStream = null;
+    if (preferredQuality === "best") {
+      preferredStream = streams[0];
+    } else if (preferredQuality === "worst") {
+      preferredStream = streams[streams.length - 1];
+    } else {
+      preferredStream = streams.find(s => s.resolution === preferredQuality);
+    }
+    if (preferredStream) {
+      const resolution = chalk.yellow(_.padEnd(preferredStream.resolution, 6));
+      preferredStream.displayName = resolution + " " + preferredStream.bitrate;
+    }
+  }
+
+  return streams;
 }
 
-export const chooseStream = async (masterUrl: string): Promise<ProcessedStream> => {
-  const processedStreams = await getStreams(masterUrl);
+export const chooseStream = async (
+  config: Config,
+  masterUrl: string
+): Promise<ProcessedStream> => {
+  const processedStreams = await getStreams(masterUrl, config.preferredStreamQuality);
   const streamOptions = processedStreams.map(processedStream => ({
     value: processedStream,
     name: processedStream.displayName,

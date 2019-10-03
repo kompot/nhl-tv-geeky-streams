@@ -11,6 +11,7 @@ export interface Config {
   favouriteTeams?: string[];
   streamlinkExtraOptions?: string[];
   hideOtherTeams?: boolean;
+  preferredStreamQuality?: string;
   startDownloadingIfSingleGameFound: true;
 }
 
@@ -22,6 +23,7 @@ export interface ProcessedFeed {
 
 export interface ProcessedStream {
   bandwidth: number;
+  bitrate: string;
   displayName: string,
   downloadUrl: string,
   resolution: string,

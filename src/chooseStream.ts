@@ -2,7 +2,7 @@ import axios from "axios";
 import * as m3u8Parser from "m3u8-parser";
 import * as _ from "lodash";
 import * as inquirer from "inquirer";
-import chalk from "chalk";
+import * as chalk from "chalk";
 
 const streamOption = pl => {
   const framerate = pl.attributes["FRAME-RATE"]

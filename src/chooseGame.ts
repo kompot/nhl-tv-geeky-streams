@@ -2,7 +2,7 @@ import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import * as _ from "lodash";
 import * as luxon from "luxon";
-import chalk from "chalk";
+import * as chalk from "chalk";
 import * as fs from "fs";
 
 import {

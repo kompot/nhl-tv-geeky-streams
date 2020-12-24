@@ -2,7 +2,7 @@ import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import axios from "axios";
 import * as _ from "lodash";
-import chalk from "chalk";
+import * as chalk from "chalk";
 
 import * as yaml from "js-yaml";
 import * as fs from "fs";

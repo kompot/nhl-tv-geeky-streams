@@ -9,7 +9,7 @@ Blackouts are not worked around in any way. `This game is blacked out in your re
 
 # Usage
 
-Edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login to official NHL sites). Explore other options available.
+Edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login to NHL.TV). Explore other options available.
 
 Video will be downloaded to `./video` folder. This location can be customized in `.env` file.
 

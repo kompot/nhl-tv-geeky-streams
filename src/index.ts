@@ -54,7 +54,7 @@ export interface Config {
   startDownloadingIfSingleGameFound: true;
 }
 
-var config: Config = yaml.safeLoad(fs.readFileSync("./config.yaml"));
+var config: Config = yaml.safeLoad(fs.readFileSync("./src/config.yaml.local"));
 
 const main = async (
   date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)

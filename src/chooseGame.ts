@@ -2,7 +2,7 @@ import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import * as _ from "lodash";
 import * as luxon from "luxon";
-import * as chalk from "chalk";
+import chalk from "chalk";
 import * as fs from "fs";
 
 import {
@@ -29,8 +29,8 @@ const gamesFile = "./tmp/games.json";
 
 const isFavouriteTeam = (
   team: Team,
-  favouriteTeamsAbbreviations: string[]
-): boolean => favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
+  favouriteTeamsAbbreviations: string[] | undefined
+): boolean => !!favouriteTeamsAbbreviations && favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
 
 // Columbus Blue Jackets + 2
 const maxTeamLength = 23;
@@ -38,7 +38,7 @@ const paddingForChalk = 10;
 
 const renderTeam = (
   team: Team,
-  favouriteTeamsAbbreviations: string[],
+  favouriteTeamsAbbreviations: string[] | undefined,
   game: Game,
   padStart: boolean
 ): string => {
@@ -100,7 +100,7 @@ const renderGameName = (
   );
   if (
     streamsAvailable(game, [MEDIA_STATE.ARCHIVE]) &&
-    passedFromGameStart.as("hour") < 8
+    passedFromGameStart.as("hours") < 8
   ) {
     name += " ended, archive stream";
   }
@@ -110,12 +110,13 @@ const renderGameName = (
 const streamsAvailable = (
   game: Game,
   mediaStatesToCheckFor: MEDIA_STATE[] = [MEDIA_STATE.ON, MEDIA_STATE.ARCHIVE]
-): boolean =>
-  _.some(
-    game.content.media &&
-      game.content.media.epg.find(e => e.title === EpgTitle.NHLTV).items,
+): boolean => {
+  const nhltvEpg = game.content.media?.epg.find(e => e.title === EpgTitle.NHLTV);
+  return !!nhltvEpg && _.some(
+    nhltvEpg.items,
     item => _.some(mediaStatesToCheckFor, ms => ms === item.mediaState)
   );
+}
 
 const isGameDisabledForDownloadAndReasonWhy = (
   game: Game
@@ -124,7 +125,7 @@ const isGameDisabledForDownloadAndReasonWhy = (
   if (!streamsAvailable(game)) {
     const dt = luxon.DateTime.fromISO(game.gameDate);
     const dur = dt.diffNow();
-    const durAsHour = dur.as("hour");
+    const durAsHour = dur.as("hours");
     if (durAsHour < 0) {
       disabled = chalk.gray("no streams available");
     } else if (durAsHour < 24) {
@@ -219,5 +220,10 @@ export const chooseGame = async (
   const game = games.find(
     game => String(game.gamePk) === gameSelected[questionNameGame]
   );
+
+  if (!game) {
+    throw new Error("Unknown selection");
+  }
+
   return [game, date];
 };

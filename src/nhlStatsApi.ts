@@ -56,7 +56,7 @@ interface EpgItem {
   callLetters: string;
 }
 
-interface Epg {
+export interface Epg {
   title: EpgTitle;
   items: EpgItem[];
 }

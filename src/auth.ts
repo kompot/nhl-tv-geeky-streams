@@ -50,7 +50,7 @@ const getPreviousAuthSession = (): AuthSession | undefined => {
   const sessionIsValid =
     luxon.DateTime.local()
       .diff(luxon.DateTime.fromMillis(prevSessionData.timestamp))
-      .as("minute") < sessionValidInMinutes;
+      .as("minutes") < sessionValidInMinutes;
   if (!sessionIsValid) {
     return undefined;
   }
@@ -99,8 +99,8 @@ export const getAuthSession = async (
         }
       }
     );
-  } catch (e) {
-    if (e.response.status === 401) {
+  } catch (e: any) {
+    if (e.response?.status === 401) {
       throw new Error(
         "Unable to login to nhl.com. Username or password incorrect."
       );
@@ -109,7 +109,7 @@ export const getAuthSession = async (
   }
   const authorizationCookie = r.headers["set-cookie"]
     .map(cookie.parse)
-    .find(ck => ck.Authorization);
+    .find((ck: any) => ck.Authorization);
   if (!authorizationCookie) {
     throw new Error("Authorization cookie was not found.");
   }
@@ -135,6 +135,9 @@ export const getAuthSession = async (
   // and we will reuse it so that login attempts are not throttled (and
   // they are throttled heavily)
   const sessionKey = (r2.data as Response.SessionKey).session_key;
+  if (!sessionKey) {
+    throw new Error("Session key was null.");
+  }
 
   setNextAuthSession({
     authHeader,

@@ -46,7 +46,7 @@ export const calcRecordingOffset = (
   mediaState: MEDIA_STATE,
   config: Config
 ): OffsetObject => {
-  let files = [];
+  let files: string[] = [];
 
   shell.ls("./video/*.mp4").forEach(file => {
     if (file.indexOf(baseFilename) !== -1) {
@@ -54,7 +54,7 @@ export const calcRecordingOffset = (
     }
   });
 
-  let offsetBackToStartRecordingAt: Duration;
+  let offsetBackToStartRecordingAt = luxon.Duration.fromMillis(0);
   let filenameSuffix: string = "";
   let recordingOffset = 0;
   let recordingStart = Date.now();
@@ -73,7 +73,7 @@ export const calcRecordingOffset = (
     const gameStart = luxon.DateTime.fromISO(game.gameDate);
     recordingStart = Date.now();
     const diff = luxon.DateTime.fromMillis(recordingStart).diff(gameStart);
-    const secondsDiff = _.toInteger(diff.as("second"));
+    const secondsDiff = _.toInteger(diff.as("seconds"));
     const gameHasStarted =
       luxon.DateTime.local().valueOf() > gameStart.valueOf();
     if (mediaState === MEDIA_STATE.ARCHIVE) {
@@ -116,7 +116,7 @@ export const calcRecordingOffset = (
   const partConnectionCompensation =
     files.length === 0 ? 0 : luxon.Duration.fromMillis(1 * 1000);
 
-  let durationOffset: luxon.Duration = null;
+  let durationOffset = luxon.Duration.fromMillis(0);
   if (mediaState === MEDIA_STATE.ON) {
     durationOffset = offsetBackToStartRecordingAt
       .plus(partConnectionCompensation)

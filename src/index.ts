@@ -2,7 +2,7 @@ import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
 import axios from "axios";
 import * as _ from "lodash";
-import * as chalk from "chalk";
+import chalk from "chalk";
 
 import * as yaml from "js-yaml";
 import * as fs from "fs";
@@ -11,6 +11,7 @@ import * as luxon from "luxon";
 import {
   NhlStatsApi,
   NhlStatsApiBaseUrl,
+  Epg,
   EpgTitle,
   MEDIA_STATE
 } from "./nhlStatsApi";
@@ -54,16 +55,15 @@ export interface Config {
   startDownloadingIfSingleGameFound: true;
 }
 
-var config: Config = yaml.safeLoad(fs.readFileSync("./src/config.yaml.local"));
+const config = yaml.load(fs.readFileSync("./src/config.yaml.local", "utf-8")) as Config;
 
 const main = async (
   date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
-) => {
+): Promise<void> => {
   const [game, dateLastSelected] = await chooseGame(config, date);
 
-  const feedOptions = game.content.media.epg
-    .find(e => e.title === EpgTitle.NHLTV)
-    .items.map(epgItem => ({
+  const nhltvEpg = game.content.media?.epg.find(e => e.title === EpgTitle.NHLTV);
+  const feedOptions = nhltvEpg?.items.map(epgItem => ({
       value: [
         epgItem.eventId,
         epgItem.mediaPlaybackId,
@@ -103,9 +103,13 @@ const main = async (
   try {
     auth = await getAuthSession(config.email, config.password, eventId);
   } catch (e) {
-    console.log(
-      chalk.yellow(e.message)
-    );
+    if (e instanceof Error) {
+      console.log(
+        chalk.yellow(e.message)
+      );
+    } else {
+      console.log(chalk.yellow(JSON.stringify(e)));
+    }
     return;
   }
 
@@ -143,9 +147,15 @@ const main = async (
     return main(dateLastSelected);
   }
 
-  const mediaAuth = mediaStream.session_info.sessionAttributes.find(
+  const mediaAuthAttribute = mediaStream.session_info.sessionAttributes.find(
     sa => sa.attributeName === SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2
-  ).attributeValue;
+  );
+
+  if (!mediaAuthAttribute) {
+    throw new Error("Missing auth attribute.");
+  }
+
+  const mediaAuth = mediaAuthAttribute.attributeValue;
   const masterUrl =
     mediaStream.user_verified_event[0].user_verified_content[0]
       .user_verified_media_item[0].url;

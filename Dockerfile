@@ -1,13 +1,16 @@
-FROM node:14.15-alpine
+FROM node:16.12-alpine
 
 RUN apk --no-cache add \
     build-base \
     ffmpeg \
     python3 \
-    python-dev \
+    python3-dev \
     libffi-dev \
     openssl-dev \
-  && pip3 --disable-pip-version-check install streamlink==2.0.* \
+    libxml2-dev \
+    libxslt-dev \
+    cmd:pip3 \
+  && pip3 --disable-pip-version-check install streamlink==2.4.* \
   && pip3 --disable-pip-version-check install pycryptodome \
   && apk --no-cache del build-base
 

@@ -1,10 +1,10 @@
 import axios from "axios";
-import * as m3u8Parser from "m3u8-parser";
+const m3u8Parser = require("m3u8-parser");
 import * as _ from "lodash";
 import * as inquirer from "inquirer";
-import * as chalk from "chalk";
+import chalk from "chalk";
 
-const streamOption = pl => {
+const streamOption = (pl: any) => {
   const framerate = pl.attributes["FRAME-RATE"]
     ? _.round(pl.attributes["FRAME-RATE"])
     : "";

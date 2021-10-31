@@ -99,7 +99,7 @@ export interface Game {
   };
 }
 
-interface MatchDay {
+export interface MatchDay {
   date: DateShort;
   games: Game[];
 }

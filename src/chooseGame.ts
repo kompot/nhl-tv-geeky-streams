@@ -6,6 +6,7 @@ import chalk from "chalk";
 import * as fs from "fs";
 
 import {
+  MatchDay,
   NhlStatsApi,
   NhlStatsApiBaseUrl,
   EpgTitle,
@@ -31,6 +32,14 @@ const isFavouriteTeam = (
   team: Team,
   favouriteTeamsAbbreviations: string[] | undefined
 ): boolean => !!favouriteTeamsAbbreviations && favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
+
+const hasFavouriteTeam = (
+  game: Game,
+  favouriteTeamsAbbreviations: string[] | undefined
+): boolean => {
+  return isFavouriteTeam(game.teams.away.team, favouriteTeamsAbbreviations) ||
+         isFavouriteTeam(game.teams.home.team, favouriteTeamsAbbreviations);
+}
 
 // Columbus Blue Jackets + 2
 const maxTeamLength = 23;
@@ -159,7 +168,21 @@ export const chooseGame = async (
   
   fs.writeFileSync(gamesFile, JSON.stringify(dates, null, 2));
 
-  const games = _.flatMap(dates, matchDay => matchDay.games);
+  const games: Game[] = [];
+  const hiddenGames: Game[] = [];
+  let matchDay: MatchDay | undefined;
+  if (dates.length > 0) {
+    // we only asked for one date so only look at the first one
+    matchDay = dates[0];
+    matchDay.games.forEach(game => {
+      const showGame = !config.hideOtherTeams || hasFavouriteTeam(game, config.favouriteTeams);
+      if (showGame) {
+        games.push(game);
+      } else {
+        hiddenGames.push(game);
+      }
+    });
+  }
 
   let gamesOptions: inquirer.DistinctChoice<inquirer.ListChoiceMap>[] = [
     {
@@ -167,28 +190,35 @@ export const chooseGame = async (
       name: "⤺  one day back"
     }
   ];
+  gamesOptions.push(new inquirer.Separator(" "));
+  if (matchDay) {
+    gamesOptions.push(new inquirer.Separator(matchDay.date));
+  } else {
+    gamesOptions.push(new inquirer.Separator(date.toLocaleString()));
+  }
+  gamesOptions.push(new inquirer.Separator(" "));
+
   const allGamesHaveStreamsAvailable = _.every(games, streamsAvailable);
-  if (dates.length > 0) {
-    dates.forEach(matchDay => {
-      gamesOptions.push(new inquirer.Separator(" "));
-      gamesOptions.push(new inquirer.Separator(matchDay.date));
-      gamesOptions.push(new inquirer.Separator(" "));
-      matchDay.games.forEach(game => {
-        gamesOptions.push({
-          value: String(game.gamePk),
-          name: renderGameName(game, config, allGamesHaveStreamsAvailable),
-          disabled: isGameDisabledForDownloadAndReasonWhy(game)
-        });
+  if (games.length > 0) {
+    games.forEach(game => {
+      gamesOptions.push({
+        value: String(game.gamePk),
+        name: renderGameName(game, config, allGamesHaveStreamsAvailable),
+        disabled: isGameDisabledForDownloadAndReasonWhy(game)
       });
-      gamesOptions.push(new inquirer.Separator(" "));
     });
   } else {
-    gamesOptions.push(new inquirer.Separator(" "));
-    gamesOptions.push(new inquirer.Separator(date.toLocaleString()));
-    gamesOptions.push(new inquirer.Separator(" "));
-    gamesOptions.push(new inquirer.Separator("  (no games found)"));
-    gamesOptions.push(new inquirer.Separator(" "));
+    let noGamesMessage: string;
+    if (hiddenGames.length === 0) {
+      noGamesMessage = "(no games found)";
+    } else if (hiddenGames.length === 1) {
+      noGamesMessage = "(1 hidden game)";
+    } else {
+      noGamesMessage = `(${hiddenGames.length} hidden games)`;
+    }
+    gamesOptions.push(new inquirer.Separator(`  ${noGamesMessage}`));
   }
+  gamesOptions.push(new inquirer.Separator(" "));
   gamesOptions.push({
     value: DIRECTION.FORWARD,
     name: "⤻  one day forward"

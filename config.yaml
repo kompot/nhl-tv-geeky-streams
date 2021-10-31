@@ -30,17 +30,14 @@ favouriteTeams: []
 # streamlinkExtraOptions: [--hls-segment-threads, 2]
 streamlinkExtraOptions: []
 
-
-
+# do not show other teams' games in case favorite teams are set
+hideOtherTeams: false
 
 
 
 # ===================================
 # everything below is NOT working yet
 # ===================================
-
-# do not show other teams' games in case favorite teams are set
-skipOtherTeams: true
 
 # this can be used for automatic cron job download once a day
 # will select preferred feed for favourite team

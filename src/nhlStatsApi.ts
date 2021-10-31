@@ -46,7 +46,7 @@ export enum MEDIA_STATE {
   ARCHIVE = "MEDIA_ARCHIVE",
 }
 
-interface EpgItem {
+export interface EpgItem {
   guid: Guid;
   mediaState: MEDIA_STATE;
   mediaPlaybackId: string;

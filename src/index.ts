@@ -1,6 +1,4 @@
-import * as inquirer from "inquirer";
 import axiosRestyped from "restyped-axios";
-import axios from "axios";
 import * as _ from "lodash";
 import chalk from "chalk";
 
@@ -9,10 +7,6 @@ import * as fs from "fs";
 import * as luxon from "luxon";
 
 import {
-  NhlStatsApi,
-  NhlStatsApiBaseUrl,
-  Epg,
-  EpgTitle,
   MEDIA_STATE
 } from "./nhlStatsApi";
 import {
@@ -21,25 +15,20 @@ import {
   PLAYBACK_SCENARIO,
   FORMAT,
   Response,
-  STATUS_CODE,
   CDN,
   SESSION_ATTRIBUTE_NAME,
   BLACKOUT_STATUS
 } from "./nhlMfApi";
 
 import { getAuthSession, AuthSession } from "./auth";
+import { chooseFeed } from "./chooseFeed";
 import { chooseGame } from "./chooseGame";
 import { chooseStream } from "./chooseStream";
-import { DateTime, Duration } from "luxon";
 import {
   calcRecordingOffset,
-  persistFirstFileCreationTimeAndOffset
 } from "./calcRecordingOffset";
 import { download } from "./download";
 
-const statsApi = axiosRestyped.create<NhlStatsApi>({
-  baseURL: NhlStatsApiBaseUrl
-});
 const mfApi = axiosRestyped.create<NhlMfApi>({
   baseURL: NhlMfApiBaseUrl
 });
@@ -64,47 +53,11 @@ const main = async (
   date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
 ): Promise<void> => {
   const [game, dateLastSelected] = await chooseGame(config, date);
-
-  const nhltvEpg = game.content.media?.epg.find(e => e.title === EpgTitle.NHLTV);
-  const feedOptions = nhltvEpg?.items.map(epgItem => ({
-      value: [
-        epgItem.eventId,
-        epgItem.mediaPlaybackId,
-        epgItem.mediaFeedType,
-        epgItem.callLetters,
-        epgItem.mediaState
-      ].join("|"),
-      name: _.compact([
-        epgItem.mediaFeedType,
-        epgItem.callLetters,
-        epgItem.feedName
-      ]).join(", ")
-    }));
-
-  const questionNameFeed = "feed";
-
-  const questionsFeed: inquirer.ListQuestion[] = [
-    {
-      type: "list",
-      name: questionNameFeed,
-      message: "Choose feed to watch",
-      choices: feedOptions
-    }
-  ];
-
-  const feedSelected = await inquirer.prompt(questionsFeed);
-
-  const [
-    eventId,
-    mediaPlaybackId,
-    mediaFeedType,
-    callLetters,
-    mediaState
-  ] = feedSelected[questionNameFeed].split("|");
+  const feed = await chooseFeed(config, game);
 
   let auth: AuthSession | undefined;
   try {
-    auth = await getAuthSession(config.email, config.password, eventId);
+    auth = await getAuthSession(config.email, config.password, feed.eventId);
   } catch (e) {
     if (e instanceof Error) {
       console.log(
@@ -119,7 +72,7 @@ const main = async (
   const r1 = await mfApi.request({
     url: "/ws/media/mf/v2.4/stream",
     params: {
-      contentId: mediaPlaybackId,
+      contentId: Number(feed.mediaPlaybackId),
       playbackScenario: PLAYBACK_SCENARIO.HTTP_CLOUD_WIRED_60,
       sessionKey: auth.sessionKey,
       auth: "response",
@@ -172,15 +125,15 @@ const main = async (
     game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
     "at",
     game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
-    "(" + mediaFeedType + (callLetters && "_") + callLetters + ")",
+    "(" + feed.mediaFeedType + (feed.callLetters && "_") + feed.callLetters + ")",
     stream.resolution,
-    mediaState === MEDIA_STATE.ON ? "live" : "archive"
+    feed.mediaState === MEDIA_STATE.ON ? "live" : "archive"
   ].join("_");
 
   const recordingOffset = calcRecordingOffset(
     filename,
     game,
-    mediaState,
+    feed.mediaState,
     config
   );
 

@@ -6,9 +6,11 @@ import {
   OffsetObject,
   persistFirstFileCreationTimeAndOffset
 } from "./calcRecordingOffset";
+import {
+  ProcessedStream,
+} from './geekyStreamsApi';
 import { SESSION_ATTRIBUTE_NAME } from "./nhlMfApi";
 import { AuthSession } from "./auth";
-import { IStream } from "./chooseStream";
 
 const processName = "streamlink";
 
@@ -17,7 +19,7 @@ export const download = (
   recordingOffset: OffsetObject,
   auth: AuthSession,
   mediaAuth: string,
-  stream: IStream,
+  stream: ProcessedStream,
   streamlinkExtraOptions: string[] = []
 ) => {
   const streamlinkBaseOptions = [
@@ -30,7 +32,7 @@ export const download = (
     "Authorization=" + auth.authHeader,
     `--http-cookie`,
     SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
-    stream.url,
+    stream.downloadUrl,
     "best"
   ];
 

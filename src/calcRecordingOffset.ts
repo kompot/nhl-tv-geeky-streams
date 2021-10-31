@@ -4,8 +4,10 @@ import { Duration } from "luxon";
 import * as shell from "shelljs";
 import * as fs from "fs";
 
+import {
+  Config,
+} from './geekyStreamsApi';
 import { MEDIA_STATE, Game } from "./nhlStatsApi";
-import { Config } from "./index";
 
 export interface OffsetObject {
   finalFilename: string;

@@ -4,6 +4,7 @@ import * as _ from "lodash";
 
 import {
   isFavouriteTeam,
+  Config,
   ProcessedFeed,
 } from "./geekyStreamsApi";
 import {
@@ -12,7 +13,6 @@ import {
   Game,
   MediaFeedType,
 } from "./nhlStatsApi";
-import { Config } from "./index";
 
 const renderFeedName = (
   epgItem: EpgItem,

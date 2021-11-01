@@ -102,7 +102,7 @@ Requires a favourite team and preferred stream quality.`,
       game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
       "at",
       game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
-      "(" + feed.mediaFeedType + (feed.callLetters && "_") + feed.callLetters + ")",
+      "(" + feed.mediaFeedType + (feed.callLetters && "_") + feed.callLetters.replace('+', 'plus') + ")",
       streamSelection.processedStream.resolution,
       feed.mediaState === MEDIA_STATE.ON ? "live" : "archive"
     ].join("_");

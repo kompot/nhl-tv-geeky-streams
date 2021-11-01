@@ -1,8 +1,20 @@
+import axios from "axios";
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as luxon from "luxon";
+const m3u8Parser = require("m3u8-parser");
 import axiosRestyped from "restyped-axios";
 
+import {
+  BLACKOUT_STATUS,
+  CDN,
+  FORMAT,
+  NhlMfApi,
+  NhlMfApiBaseUrl,
+  PLAYBACK_SCENARIO,
+  Response,
+  SESSION_ATTRIBUTE_NAME,
+} from "./nhlMfApi";
 import {
   EpgItem,
   EpgTitle,
@@ -15,7 +27,16 @@ import {
   Team,
 } from "./nhlStatsApi";
 
+import {
+  getAuthSession,
+  AuthSession,
+} from "./auth";
+
 const gamesFile = "./tmp/games.json";
+
+const mfApi = axiosRestyped.create<NhlMfApi>({
+  baseURL: NhlMfApiBaseUrl
+});
 
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
@@ -69,9 +90,18 @@ export interface ProcessedGameList {
 export interface ProcessedStream {
   bandwidth: number;
   bitrate: string;
-  displayName: string;
+  displayName: string | null;
   downloadUrl: string;
   resolution: string;
+}
+
+export interface ProcessedStreamList {
+  auth?: AuthSession;
+  isBlackedOut: boolean;
+  mediaAuth?: string;
+  preferredStream?: ProcessedStream;
+  streams: ProcessedStream[];
+  unknownError?: string;
 }
 
 export type GameSelection = {
@@ -82,6 +112,13 @@ export type GameSelection = {
   isDateChange: false;
   newDate?: never;
   processedGame: ProcessedGame;
+}
+
+export interface StreamSelection {
+  auth: AuthSession;
+  mediaAuth: string;
+  processedStream?: ProcessedStream;
+  selectNewGame: boolean;
 }
 
 const processFeeds = (
@@ -182,4 +219,122 @@ export const getGameList = async (
     matchDay,
     queryDate: date,
   };
+};
+
+const processStream = (
+  pl: any,
+  masterUrl: string
+): ProcessedStream => {
+  const framerate = pl.attributes["FRAME-RATE"]
+    ? _.round(pl.attributes["FRAME-RATE"])
+    : "";
+  const rows = pl.attributes.RESOLUTION.height;
+  const resolution = `${rows}p${framerate}`;
+  const bandwidth = pl.attributes.BANDWIDTH;
+  const bitrate = "" + bandwidth / 1000 + "k";
+  const downloadUrl = masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + pl.uri;
+
+  return {
+    bandwidth,
+    bitrate,
+    displayName: null,
+    downloadUrl,
+    resolution,
+  };
+};
+
+const getPreferredStream = (
+  streams: ProcessedStream[],
+  preferredQuality: string | undefined
+): ProcessedStream | undefined => {
+  let preferredStream: ProcessedStream | undefined;
+  if (preferredQuality && streams.length > 0) {
+    if (preferredQuality === "best") {
+      preferredStream = streams[0];
+    } else if (preferredQuality === "worst") {
+      preferredStream = streams[streams.length - 1];
+    } else {
+      preferredStream = streams.find(s => s.resolution === preferredQuality);
+    }
+  }
+  return preferredStream;
+};
+
+export const getStreamList = async (
+  config: Config,
+  processedFeed: ProcessedFeed,
+): Promise<ProcessedStreamList> => {
+  const streamList: ProcessedStreamList = {
+    isBlackedOut: false,
+    streams: [],
+  };
+  let auth: AuthSession | undefined;
+  try {
+    auth = await getAuthSession(config.email, config.password, processedFeed.epgItem.eventId);
+  } catch (e) {
+    if (e instanceof Error) {
+      streamList.unknownError = e.message;   
+      return streamList;   
+    }
+    
+    throw e;
+  }
+  streamList.auth = auth;
+
+  const r1 = await mfApi.request({
+    url: "/ws/media/mf/v2.4/stream",
+    params: {
+      contentId: Number(processedFeed.epgItem.mediaPlaybackId),
+      playbackScenario: PLAYBACK_SCENARIO.HTTP_CLOUD_WIRED_60,
+      sessionKey: auth.sessionKey,
+      auth: "response",
+      format: FORMAT.JSON,
+      cdnName: CDN.AKAMAI
+    },
+    headers: {
+      Authorization: auth.authHeader
+    }
+  });
+  const mediaStream = r1.data as Response.Playlist;
+  // console.log(
+  //   "_____ r1",
+  //   JSON.stringify(mediaStream, null, 2)
+  // );
+
+  if (
+    mediaStream.user_verified_event[0].user_verified_content[0]
+      .user_verified_media_item[0].blackout_status.status ===
+    BLACKOUT_STATUS.BLACKED_OUT
+  ) {
+    streamList.isBlackedOut = true;
+    return streamList;
+  }
+
+  const mediaAuthAttribute = mediaStream.session_info.sessionAttributes.find(
+    sa => sa.attributeName === SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2
+  );
+
+  if (!mediaAuthAttribute) {
+    throw new Error("Missing auth attribute.");
+  }
+
+  streamList.mediaAuth = mediaAuthAttribute.attributeValue;
+  const masterUrl =
+    mediaStream.user_verified_event[0].user_verified_content[0]
+      .user_verified_media_item[0].url;
+
+  const masterPlaylistContent = await axios.get(masterUrl);
+
+  const parser = new m3u8Parser.Parser();
+  parser.push(masterPlaylistContent.data);
+  parser.end();
+
+  const streams: ProcessedStream[] = parser.manifest.playlists.map((playlist: any) => {
+    return processStream(playlist, masterUrl);
+  });
+  streams.sort((x, y) => y.bandwidth - x.bandwidth);
+  streamList.streams = streams;
+  streamList.preferredStream = getPreferredStream(streams, config.preferredStreamQuality);
+
+  return streamList;
 };

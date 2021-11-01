@@ -67,6 +67,7 @@ export interface ProcessedFeedList {
   isArchiveTvStreamAvailable: boolean;
   isLiveTvStreamAvailable: boolean;
   isTvStreamAvailable: boolean;
+  preferredFeeds: ProcessedFeed[];
 }
 
 export interface ProcessedGame {
@@ -84,6 +85,7 @@ export interface ProcessedGameList {
   games: ProcessedGame[];
   hiddenGames: ProcessedGame[];
   matchDay: MatchDay;
+  noGamesMessage: string | null;
   queryDate: luxon.DateTime;
 }
 
@@ -104,21 +106,43 @@ export interface ProcessedStreamList {
   unknownError?: string;
 }
 
+export type FeedSelection = {
+  cancelSelection: true;
+  processedFeed?: never;
+} | {
+  cancelSelection: false;
+  processedFeed: ProcessedFeed;
+}
+
 export type GameSelection = {
   isDateChange: true;
+  cancelSelection?: never;
   newDate: luxon.DateTime;
   processedGame?: never;
 } | {
   isDateChange: false;
+  cancelSelection: true;
+  newDate?: never;
+  processedGame?: never;
+} | {
+  isDateChange: false;
+  cancelSelection: false;
   newDate?: never;
   processedGame: ProcessedGame;
 }
 
-export interface StreamSelection {
-  auth: AuthSession;
-  mediaAuth: string;
-  processedStream?: ProcessedStream;
-  selectNewGame: boolean;
+export type StreamSelection = {
+  cancelSelection: true;
+  processedStream?: never;
+  selectNewGame?: never;
+} | {
+  cancelSelection: false;
+  processedStream?: never;
+  selectNewGame: true;
+} | {
+  cancelSelection: false;
+  processedStream: ProcessedStream;
+  selectNewGame: false;
 }
 
 const processFeeds = (
@@ -126,6 +150,7 @@ const processFeeds = (
 ): ProcessedFeedList => {
   let isArchiveTvStreamAvailable = false;
   let isLiveTvStreamAvailable = false;
+  const preferredFeeds: ProcessedFeed[] = [];
   const nhltvEpg = processedGame.game.content.media?.epg.find(e => e.title === EpgTitle.NHLTV);
   const feeds = nhltvEpg?.items.map(epgItem => {
     const isArchiveTvStream = epgItem.mediaState === MEDIA_STATE.ARCHIVE;
@@ -142,6 +167,9 @@ const processFeeds = (
     };
     isArchiveTvStreamAvailable = isArchiveTvStreamAvailable || isArchiveTvStream;
     isLiveTvStreamAvailable = isLiveTvStreamAvailable || isLiveTvStream;
+    if (processedFeed.isForFavouriteTeam) {
+      preferredFeeds.push(processedFeed);
+    }
     return processedFeed;
   }) ?? [];
 
@@ -150,6 +178,7 @@ const processFeeds = (
     isArchiveTvStreamAvailable,
     isLiveTvStreamAvailable,
     isTvStreamAvailable: isArchiveTvStreamAvailable || isLiveTvStreamAvailable,
+    preferredFeeds,
   };
 };
 
@@ -217,6 +246,7 @@ export const getGameList = async (
     games,
     hiddenGames,
     matchDay,
+    noGamesMessage: null,
     queryDate: date,
   };
 };

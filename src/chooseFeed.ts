@@ -3,6 +3,7 @@ import * as inquirer from "inquirer";
 import * as _ from "lodash";
 
 import {
+  FeedSelection,
   ProcessedFeed,
   ProcessedFeedList,
 } from "./geekyStreamsApi";
@@ -28,10 +29,21 @@ const renderFeeds = (
   });
 };
 
-export const chooseFeed = async (
+export const chooseFeed = (
+  passive: boolean,
   feedList: ProcessedFeedList
-): Promise<ProcessedFeed> => {
+): Promise<FeedSelection> => {
   renderFeeds(feedList);
+  if (passive) {
+    return chooseFeedPassively(feedList);
+  } else {
+    return chooseFeedInteractively(feedList);
+  }
+};
+
+const chooseFeedInteractively = async (
+  feedList: ProcessedFeedList
+): Promise<FeedSelection> => {
   const feedOptions = feedList.feeds.map(feed => ({
     value: feed,
     name: feed.displayName!,
@@ -49,7 +61,34 @@ export const chooseFeed = async (
   ];
 
   const feedSelected = await inquirer.prompt(questionsFeed);
+  const feedSelection: FeedSelection = {
+    cancelSelection: false,
+    processedFeed: feedSelected[questionNameFeed],
+  };
+  return feedSelection;
+};
 
-  const processedFeed: ProcessedFeed = feedSelected[questionNameFeed];
-  return processedFeed;
-}
+const chooseFeedPassively = async (
+  feedList: ProcessedFeedList
+): Promise<FeedSelection> => {
+  if (feedList.preferredFeeds.length === 1) {
+    const feedSelection: FeedSelection = {
+      cancelSelection: false,
+      processedFeed: feedList.preferredFeeds[0],
+    };
+    console.log(feedSelection.processedFeed.displayName);
+    return feedSelection;
+  } else {      
+    console.log(
+      chalk.yellow(
+        "The feed couldn't be autoselected."
+      )
+    );
+    const possibleFeeds = feedList.preferredFeeds.length > 1 ? feedList.preferredFeeds : feedList.feeds;
+    possibleFeeds.forEach(f => console.log(f.displayName));
+
+    return {
+      cancelSelection: true,
+    };
+  }
+};

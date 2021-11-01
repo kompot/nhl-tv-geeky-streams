@@ -131,12 +131,39 @@ const renderGames = (
     game.disableReason = isGameDisabledForDownloadAndReasonWhy(game);
     game.displayName = renderGameName(game, gameList.allGamesHaveTvStreamsAvailable);
   });
+  gameList.hiddenGames.forEach(game => {
+    game.disableReason = isGameDisabledForDownloadAndReasonWhy(game);
+    game.displayName = renderGameName(game, gameList.allGamesHaveTvStreamsAvailable);
+  });
+  
+  if (gameList.games.length === 0) {
+    let noGamesMessage: string;
+    if (gameList.hiddenGames.length === 0) {
+      noGamesMessage = "(no games found)";
+    } else if (gameList.hiddenGames.length === 1) {
+      noGamesMessage = "(1 hidden game)";
+    } else {
+      noGamesMessage = `(${gameList.hiddenGames.length} hidden games)`;
+    }
+    gameList.noGamesMessage = noGamesMessage;
+  }
 };
 
-export const chooseGame = async (
+export const chooseGame = (
+  passive: boolean,
   gameList: ProcessedGameList
 ): Promise<GameSelection> => {
   renderGames(gameList);
+  if (passive) {
+    return chooseGamePassively(gameList);
+  } else {
+    return chooseGameInteractively(gameList);
+  }
+};
+
+const chooseGameInteractively = async (
+  gameList: ProcessedGameList
+): Promise<GameSelection> => {
   let gamesOptions: inquirer.DistinctChoice<inquirer.ListChoiceMap>[] = [
     {
       value: DIRECTION.BACK,
@@ -160,15 +187,7 @@ export const chooseGame = async (
       });
     });
   } else {
-    let noGamesMessage: string;
-    if (gameList.hiddenGames.length === 0) {
-      noGamesMessage = "(no games found)";
-    } else if (gameList.hiddenGames.length === 1) {
-      noGamesMessage = "(1 hidden game)";
-    } else {
-      noGamesMessage = `(${gameList.hiddenGames.length} hidden games)`;
-    }
-    gamesOptions.push(new inquirer.Separator(`  ${noGamesMessage}`));
+    gamesOptions.push(new inquirer.Separator(`  ${gameList.noGamesMessage}`));
   }
   gamesOptions.push(new inquirer.Separator(" "));
   gamesOptions.push({
@@ -195,19 +214,49 @@ export const chooseGame = async (
   if (gameSelected[questionNameGame] === DIRECTION.BACK) {
     return {
       isDateChange: true,
-      newDate: gameList.queryDate.minus({ days: 1 })
+      newDate: gameList.queryDate.minus({ days: 1 }),
     };
-  }
-  if (gameSelected[questionNameGame] === DIRECTION.FORWARD) {
+  } else if (gameSelected[questionNameGame] === DIRECTION.FORWARD) {
     return {
       isDateChange: true,
-      newDate: gameList.queryDate.plus({ days: 1 })
+      newDate: gameList.queryDate.plus({ days: 1 }),
+    };
+  } else {
+    return {
+      isDateChange: false,
+      cancelSelection: false,
+      processedGame: gameSelected[questionNameGame],
     };
   }
+};
 
-  const game: ProcessedGame = gameSelected[questionNameGame];
-  return {
-    isDateChange: false,
-    processedGame: game,
-  };
+const chooseGamePassively = async (
+  gameList: ProcessedGameList
+): Promise<GameSelection> => {
+  if (gameList.games.length === 1) {
+    const processedGame = gameList.games[0];
+    console.log(processedGame.displayName);
+    return {
+      isDateChange: false,
+      cancelSelection: false,
+      processedGame,
+    };
+  } else {      
+    console.log(
+      chalk.yellow(
+        "The game couldn't be autoselected."
+      )
+    );
+    if (gameList.games.length === 0) {
+      console.log(gameList.noGamesMessage);
+      gameList.hiddenGames.forEach(g => console.log(g.displayName));
+    } else {
+      gameList.games.forEach(g => console.log(g.displayName));
+    }
+
+    return {
+      cancelSelection: true,
+      isDateChange: false,
+    };  
+  }
 };

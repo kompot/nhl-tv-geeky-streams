@@ -27,30 +27,47 @@ const renderStreams = (
 };
 
 export const chooseStream = async (
+  passive: boolean,
   streamList: ProcessedStreamList
 ): Promise<StreamSelection> => {
-  const streamSelection: StreamSelection = {
-    auth: streamList.auth!,
-    mediaAuth: streamList.mediaAuth!,
-    selectNewGame: false,
-  }
   if (streamList.isBlackedOut) {
     console.log(
       chalk.yellow(
         "This game is blacked out in your region. Try using VPN or select another game."
       )
     );
-    streamSelection.selectNewGame = true;
-    return streamSelection;
-  }
-  if (streamList.unknownError) {
+
+    if (passive) {
+      return {
+        cancelSelection: true,
+      };
+    }
+
+    return {
+      cancelSelection: false,
+      selectNewGame: true,
+    };
+  } else if (streamList.unknownError) {
     console.log(
       chalk.yellow(streamList.unknownError)
     );
-    return streamSelection;
+
+    return {
+      cancelSelection: true,
+    };
   }
 
   renderStreams(streamList);
+  if (passive) {
+    return chooseStreamPassively(streamList);
+  } else {
+    return chooseStreamInteractively(streamList);
+  }
+};
+
+export const chooseStreamInteractively = async (
+  streamList: ProcessedStreamList
+): Promise<StreamSelection> => {
   const processedStreams = streamList.streams;
   const streamOptions = processedStreams.map(processedStream => ({
     value: processedStream,
@@ -68,6 +85,36 @@ export const chooseStream = async (
   ];
 
   const streamSelected = await inquirer.prompt(questionsStream);
-  streamSelection.processedStream = streamSelected[questionNameStream];
+  const streamSelection: StreamSelection = {
+    cancelSelection: false,
+    processedStream: streamSelected[questionNameStream],
+    selectNewGame: false,
+  };
+
   return streamSelection;
+};
+
+export const chooseStreamPassively = async (
+  streamList: ProcessedStreamList
+): Promise<StreamSelection> => {
+  const processedStream = streamList.preferredStream;
+  
+  if (!processedStream) {
+    console.log(
+      chalk.yellow(
+        "The stream couldn't be autoselected."
+      )
+    );
+    streamList.streams.forEach(s => console.log(s.displayName));
+    return {
+      cancelSelection: true,
+    };
+  }
+
+  console.log(processedStream.displayName);
+  return {
+    cancelSelection: false,
+    selectNewGame: false,
+    processedStream,
+  };
 };

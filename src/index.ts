@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as luxon from "luxon";
+import * as yargs from "yargs";
 
 import {
   getGameList,
@@ -20,28 +21,48 @@ import {
 } from "./calcRecordingOffset";
 import { download } from "./download";
 
-const config = yaml.load(fs.readFileSync("./src/config.yaml.local", "utf-8")) as Config;
-// don't hide other teams if none are favourited
-const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.length);
-config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams;
+interface CommandLineConfig {
+  passive: boolean;
+}
 
-const main = async (
+const main = async (): Promise<void> => {
+  const yargv = await yargs.options({
+    passive: {
+      description: `Autoselect the game, feed, and stream to download.
+Requires a favourite team and preferred stream quality.`,
+      type: "boolean",
+    },
+  }).strict().argv;
+  const argv: CommandLineConfig = {
+    passive: !!yargv.passive,
+  };
+
+  const config = yaml.load(fs.readFileSync("./src/config.yaml.local", "utf-8")) as Config;
+  // don't hide other teams if none are favourited
+  const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.length);
+  config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams ||
+                          argv.passive;
+
   // will set timezone to somewhat central US so that we always get all matches
   // for current US day, even if you are actually in Asia
-  date: luxon.DateTime = luxon.DateTime.local().setZone(config.matchTimeZone)
-): Promise<void> => {
-  let dateLastSelected = date;
+  let dateLastSelected = luxon.DateTime.local().setZone(config.matchTimeZone);
   while (true) {
     const gameList = await getGameList(config, dateLastSelected);
-    const gameSelection = await chooseGame(gameList);
+    const gameSelection = await chooseGame(argv.passive, gameList);
     if (gameSelection.isDateChange) {
       dateLastSelected = gameSelection.newDate;
       continue;
+    } else if (gameSelection.cancelSelection) {
+      return;
     }
 
     const processedGame = gameSelection.processedGame;
     const game = processedGame.game;
-    const processedFeed = await chooseFeed(processedGame.feedList!);
+    const feedSelection = await chooseFeed(argv.passive, processedGame.feedList!);
+    if (feedSelection.cancelSelection) {
+      return;
+    }
+    const processedFeed = feedSelection.processedFeed;
     const feed = processedFeed.epgItem;
     
     const streamList = await getStreamList(config, processedFeed);
@@ -49,11 +70,11 @@ const main = async (
       throw new Error(streamList.unknownError);
     }
 
-    const streamSelection = await chooseStream(streamList);
-    if (streamSelection.selectNewGame) {
-      continue;
-    } else if (!streamSelection.processedStream) {
+    const streamSelection = await chooseStream(argv.passive, streamList);
+    if (streamSelection.cancelSelection) {
       return;
+    } else if (streamSelection.selectNewGame) {
+      continue;
     }
 
     const filename = [
@@ -78,8 +99,8 @@ const main = async (
     return download(
       filename,
       recordingOffset,
-      streamSelection.auth,
-      streamSelection.mediaAuth,
+      streamList.auth,
+      streamList.mediaAuth,
       streamSelection.processedStream,
       config.streamlinkExtraOptions
     );

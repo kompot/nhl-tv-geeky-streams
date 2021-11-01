@@ -33,6 +33,10 @@ streamlinkExtraOptions: []
 # do not show other teams' games in case favorite teams are set
 hideOtherTeams: false
 
+# preferred stream quality
+# currently NHLTV offers 216p, 288p, 360p, 504p, 540p, 720p, 720p60
+# 'best' and 'worst' are also available
+#preferredStreamQuality: best
 
 
 # ===================================

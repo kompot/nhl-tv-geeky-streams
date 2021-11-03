@@ -1,24 +1,12 @@
 import * as _ from "lodash";
 import * as luxon from "luxon";
-import { Duration } from "luxon";
 import * as shell from "shelljs";
 import * as fs from "fs";
 
 import {
   Config,
+  OffsetObject,
 } from './geekyStreamsApi';
-import { MEDIA_STATE, Game } from "./nhlStatsApi";
-
-export interface OffsetObject {
-  finalFilename: string;
-  // this is used for https://streamlink.github.io/cli.html#cmdoption-hls-start-offset
-  // and has differend meaning for live and archive matches
-  // Amount of time to skip from the beginning of the stream. For live streams, this is a negative offset from the end of the stream.
-  durationOffset: luxon.Duration;
-  filesLength: number;
-  recordingStart: number;
-  recordingOffset: number;
-}
 
 const recordsFile = "./tmp/records.json";
 
@@ -44,8 +32,8 @@ const readRecords = () => {
 
 export const calcRecordingOffset = (
   baseFilename: string,
-  game: Game,
-  mediaState: MEDIA_STATE,
+  gameDateTime: luxon.DateTime,
+  isLive: boolean,
   config: Config
 ): OffsetObject => {
   let files: string[] = [];
@@ -72,13 +60,13 @@ export const calcRecordingOffset = (
       );
     filenameSuffix = "part" + files.length;
   } else {
-    const gameStart = luxon.DateTime.fromISO(game.gameDate);
+    const gameStart = gameDateTime;
     recordingStart = Date.now();
     const diff = luxon.DateTime.fromMillis(recordingStart).diff(gameStart);
     const secondsDiff = _.toInteger(diff.as("seconds"));
     const gameHasStarted =
       luxon.DateTime.local().valueOf() > gameStart.valueOf();
-    if (mediaState === MEDIA_STATE.ARCHIVE) {
+    if (!isLive) {
       recordingOffset = 0;
     } else if (gameHasStarted && config.playLiveGamesFromStart) {
       // if game has started and setting is set to record from the start
@@ -108,23 +96,22 @@ export const calcRecordingOffset = (
     );
     const partDuration = _.toNumber(res.stdout) * 1000;
     console.log(
-      `${file}: ${Duration.fromMillis(partDuration).toFormat("hh:mm:ss")}`
+      `${file}: ${luxon.Duration.fromMillis(partDuration).toFormat("hh:mm:ss")}`
     );
     durationOfAllRecordedParts += partDuration;
   });
 
-  const totalRecordedDuration = Duration.fromMillis(durationOfAllRecordedParts);
+  const totalRecordedDuration = luxon.Duration.fromMillis(durationOfAllRecordedParts);
 
   const partConnectionCompensation =
     files.length === 0 ? 0 : luxon.Duration.fromMillis(1 * 1000);
 
   let durationOffset = luxon.Duration.fromMillis(0);
-  if (mediaState === MEDIA_STATE.ON) {
+  if (isLive) {
     durationOffset = offsetBackToStartRecordingAt
       .plus(partConnectionCompensation)
       .minus(totalRecordedDuration);
-  }
-  if (mediaState === MEDIA_STATE.ARCHIVE) {
+  } else {
     durationOffset = totalRecordedDuration.minus(partConnectionCompensation);
   }
 

@@ -3,23 +3,19 @@ import * as readline from "readline";
 import * as _ from "lodash";
 
 import {
-  OffsetObject,
   persistFirstFileCreationTimeAndOffset
 } from "./calcRecordingOffset";
 import {
-  ProcessedStream,
+  OffsetObject,
 } from './geekyStreamsApi';
-import { SESSION_ATTRIBUTE_NAME } from "./nhlMfApi";
-import { AuthSession } from "./auth";
 
 const processName = "streamlink";
 
 export const download = (
   filename: string,
   recordingOffset: OffsetObject,
-  auth: AuthSession,
-  mediaAuth: string,
-  stream: ProcessedStream,
+  streamDownloadUrl: string,
+  streamlinkAuthOptions: string[] = [],
   streamlinkExtraOptions: string[] = []
 ) => {
   const streamlinkBaseOptions = [
@@ -28,17 +24,14 @@ export const download = (
     "--force-progress",
     "--hls-start-offset",
     recordingOffset.durationOffset.toFormat("hh:mm:ss"),
-    `--http-cookie`,
-    "Authorization=" + auth.authHeader,
-    `--http-cookie`,
-    SESSION_ATTRIBUTE_NAME.MEDIA_AUTH_V2 + "=" + mediaAuth,
-    stream.downloadUrl,
+    streamDownloadUrl,
     "best"
   ];
 
   const streamStart = spawn(processName, [
+    ...streamlinkAuthOptions,
+    ...streamlinkExtraOptions,
     ...streamlinkBaseOptions,
-    ...streamlinkExtraOptions
   ]);
 
   let recordStartTimePersisted = false;

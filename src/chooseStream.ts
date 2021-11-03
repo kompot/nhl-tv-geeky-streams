@@ -4,31 +4,84 @@ import * as _ from "lodash";
 
 import {
   ProcessedStream,
-  ProcessedStreamList,
+  ProviderStream,
+  ProviderStreamList,
   StreamSelection,
 } from './geekyStreamsApi';
+
+interface RenderedStream {  
+  displayName: string;
+  stream: ProviderStream;
+}
+
+interface RenderedStreamList {
+  streams: RenderedStream[],
+  preferredStream?: RenderedStream;
+}
+
+const getPreferredStream = (
+  streams: ProviderStream[],
+  preferredQuality: string | undefined
+): ProviderStream | undefined => {
+  let preferredStream: ProviderStream | undefined;
+  if (preferredQuality && streams.length > 0) {
+    if (preferredQuality === "best") {
+      preferredStream = streams[0];
+    } else if (preferredQuality === "worst") {
+      preferredStream = streams[streams.length - 1];
+    } else {
+      preferredStream = streams.find(s => s.getStream().resolution === preferredQuality);
+    }
+  }
+  return preferredStream;
+};
 
 const renderStreamName = (
   processedStream: ProcessedStream,
   isPreferredStream: boolean,
-) => {
+): string => {
   const paddedResolution = _.padEnd(processedStream.resolution, 6)
   const resolutionName = isPreferredStream ? chalk.yellow(paddedResolution) : paddedResolution;
   const displayName = resolutionName + " " + chalk.gray(processedStream.bitrate);
   return displayName;
 };
 
+const renderStream = (
+  providerStream: ProviderStream,
+  isPreferredStream: boolean,
+): RenderedStream => {
+  return {
+    displayName: renderStreamName(providerStream.getStream(), isPreferredStream),
+    stream: providerStream,
+  };
+};
+
 const renderStreams = (
-  streamList: ProcessedStreamList
-): void => {
-  streamList.streams.forEach(stream => {
-    stream.displayName = renderStreamName(stream, stream === streamList.preferredStream);
+  preferredQuality: string | undefined,
+  streamList: ProviderStreamList
+): RenderedStreamList => {
+  const preferredStream = getPreferredStream(streamList.streams, preferredQuality);
+  let preferredRenderedStream: RenderedStream | undefined;
+
+  const renderedStreams = streamList.streams.map(stream => {
+    const isPreferredStream = stream === preferredStream;
+    const renderedStream = renderStream(stream, isPreferredStream);
+    if (isPreferredStream) {
+      preferredRenderedStream = renderedStream;
+    }
+    return renderedStream;
   });
+
+  return {
+    streams: renderedStreams,
+    preferredStream: preferredRenderedStream,
+  };
 };
 
 export const chooseStream = async (
   passive: boolean,
-  streamList: ProcessedStreamList
+  preferredQuality: string | undefined,
+  streamList: ProviderStreamList
 ): Promise<StreamSelection> => {
   if (streamList.isBlackedOut) {
     console.log(
@@ -57,22 +110,29 @@ export const chooseStream = async (
     };
   }
 
-  renderStreams(streamList);
+  const renderedStreamList = renderStreams(preferredQuality, streamList);
   if (passive) {
-    return chooseStreamPassively(streamList);
+    return chooseStreamPassively(renderedStreamList);
   } else {
-    return chooseStreamInteractively(streamList);
+    return chooseStreamInteractively(renderedStreamList);
   }
 };
 
 export const chooseStreamInteractively = async (
-  streamList: ProcessedStreamList
+  streamList: RenderedStreamList
 ): Promise<StreamSelection> => {
-  const processedStreams = streamList.streams;
-  const streamOptions = processedStreams.map(processedStream => ({
-    value: processedStream,
-    name: processedStream.displayName!,
-  }));
+  const streamOptions = streamList.streams.map(renderedStream => {
+    const streamValue: StreamSelection = {
+      cancelSelection: false,
+      providerStream: renderedStream.stream,
+      selectNewGame: false,
+    };
+
+    return {
+      value: streamValue,
+      name: renderedStream.displayName,
+    }
+  });
 
   const questionNameStream = "stream";
   const questionsStream: inquirer.ListQuestion[] = [
@@ -85,21 +145,15 @@ export const chooseStreamInteractively = async (
   ];
 
   const streamSelected = await inquirer.prompt(questionsStream);
-  const streamSelection: StreamSelection = {
-    cancelSelection: false,
-    processedStream: streamSelected[questionNameStream],
-    selectNewGame: false,
-  };
-
-  return streamSelection;
+  return streamSelected[questionNameStream];
 };
 
 export const chooseStreamPassively = async (
-  streamList: ProcessedStreamList
+  streamList: RenderedStreamList
 ): Promise<StreamSelection> => {
-  const processedStream = streamList.preferredStream;
+  const renderedStream = streamList.preferredStream;
   
-  if (!processedStream) {
+  if (!renderedStream) {
     console.log(
       chalk.yellow(
         "The stream couldn't be autoselected."
@@ -111,10 +165,10 @@ export const chooseStreamPassively = async (
     };
   }
 
-  console.log(processedStream.displayName);
+  console.log(renderedStream.displayName);
   return {
     cancelSelection: false,
     selectNewGame: false,
-    processedStream,
+    providerStream: renderedStream.stream,
   };
 };

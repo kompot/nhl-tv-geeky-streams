@@ -7,16 +7,23 @@ import {
   GameSelection,
   ProcessedGame,
   ProcessedGameList,
+  ProviderTeam,
 } from "./geekyStreamsApi";
 import {
-  Team,
   GAME_DETAILED_STATE
 } from "./nhlStatsApi";
 
+interface RenderedGame {
+  disableReason: string | undefined;
+  displayName: string;
+  game: ProcessedGame;
+}
 
-enum DIRECTION {
-  BACK = "back",
-  FORWARD = "forward"
+interface RenderedGameList {
+  gameList: ProcessedGameList;
+  games: RenderedGame[];
+  hiddenGames: RenderedGame[];
+  noGamesMessage: string | undefined;
 }
 
 // Columbus Blue Jackets + 2
@@ -24,12 +31,12 @@ const maxTeamLength = 23;
 const paddingForChalk = 10;
 
 const renderTeam = (
-  team: Team,
+  team: ProviderTeam,
   isFavTeam: boolean,
   isTvStreamAvailable: boolean,
   padStart: boolean
 ): string => {
-  const tName = isFavTeam ? chalk.yellow(team.name) : team.name;
+  const tName = isFavTeam ? chalk.yellow(team.fullName) : team.fullName;
   const favTeamPadding = isFavTeam ? paddingForChalk : 0;
   const teamPadEnd = _.padEnd(tName, maxTeamLength + favTeamPadding);
   if (!padStart) {
@@ -50,50 +57,48 @@ const renderGameName = (
     throw new Error("No feeds for game");
   }
 
-  const game = processedGame.game;
   const isTvStreamAvailable = processedGame.feedList.isTvStreamAvailable;
   let name = renderTeam(
-    game.teams.away.team,
+    processedGame.awayTeam,
     processedGame.isAwayTeamFavourite,
     isTvStreamAvailable,
     !allGamesHaveStreamsAvailable
   );
   name += chalk.gray(" @ ");
   name += renderTeam(
-    game.teams.home.team,
+    processedGame.homeTeam,
     processedGame.isHomeTeamFavourite,
     isTvStreamAvailable,
     false
   );
-  if (game.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
-    name += " " + game.status.detailedState;
+  const gameStatus = processedGame.status;
+  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
+    name += " " + gameStatus.status.detailedState;
   }
-  if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESS) {
+  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.INPROGRESS) {
     name +=
       " " +
-      game.linescore.currentPeriodOrdinal +
+      gameStatus.linescore.currentPeriodOrdinal +
       " " +
-      game.linescore.currentPeriodTimeRemaining;
+      gameStatus.linescore.currentPeriodTimeRemaining;
   }
-  if (game.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL) {
+  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL) {
     name += " soon to end";
   }
   if (
     isTvStreamAvailable &&
-    game.status.detailedState === GAME_DETAILED_STATE.SCHEDULED
+    gameStatus?.status.detailedState === GAME_DETAILED_STATE.SCHEDULED
   ) {
     name += " soon to start";
   }
   if (
     processedGame.feedList.isLiveTvStreamAvailable &&
-    (game.status.detailedState === GAME_DETAILED_STATE.GAMEOVER ||
-      game.status.detailedState === GAME_DETAILED_STATE.FINAL)
+    (gameStatus?.status.detailedState === GAME_DETAILED_STATE.GAMEOVER ||
+      gameStatus?.status.detailedState === GAME_DETAILED_STATE.FINAL)
   ) {
     name += " ended, live stream";
   }
-  const passedFromGameStart = luxon.DateTime.local().diff(
-    luxon.DateTime.fromISO(game.gameDate)
-  );
+  const passedFromGameStart = luxon.DateTime.local().diff(processedGame.gameDateTime);
   if (
     processedGame.feedList.isArchiveTvStreamAvailable &&
     passedFromGameStart.as("hours") < 8
@@ -105,39 +110,46 @@ const renderGameName = (
 
 const isGameDisabledForDownloadAndReasonWhy = (
   processedGame: ProcessedGame
-): string | null => {
-  const game = processedGame.game;
-  if (game.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
+): string | undefined => {
+  const gameStatus = processedGame.status;
+  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
     return "postponed";
-  } else if (!processedGame.feedList!.isTvStreamAvailable) {
-    const dt = luxon.DateTime.fromISO(game.gameDate);
-    const dur = dt.diffNow();
+  } else if (!processedGame.feedList.isTvStreamAvailable) {
+    const dur = processedGame.gameDateTime.diffNow();
     const durAsHour = dur.as("hours");
     if (durAsHour < 0) {
       return chalk.gray("no streams available");
     } else if (durAsHour < 24) {
       return `starts in ${dur.toFormat("h:mm")}`;
+    } else if (gameStatus) {
+      return chalk.gray(gameStatus.status.detailedState.toLowerCase());
     } else {
-      return chalk.gray(game.status.detailedState.toLowerCase());
+      return chalk.gray("no streams available");
     }
   }
-  return null;
+};
+
+const renderGame = (game: ProcessedGame, allGamesHaveStreamsAvailable: boolean): RenderedGame => {
+  return {
+    disableReason: isGameDisabledForDownloadAndReasonWhy(game),
+    displayName: renderGameName(game, allGamesHaveStreamsAvailable),
+    game,
+  };
 };
 
 const renderGames = (
   gameList: ProcessedGameList
-): void => {
-  gameList.games.forEach(game => {
-    game.disableReason = isGameDisabledForDownloadAndReasonWhy(game);
-    game.displayName = renderGameName(game, gameList.allGamesHaveTvStreamsAvailable);
+): RenderedGameList => {
+  const allGamesHaveTvStreamsAvailable = _.every(gameList.games, g => g.feedList.isTvStreamAvailable);
+  const renderedGames = gameList.games.map(game => {
+    return renderGame(game, allGamesHaveTvStreamsAvailable);
   });
-  gameList.hiddenGames.forEach(game => {
-    game.disableReason = isGameDisabledForDownloadAndReasonWhy(game);
-    game.displayName = renderGameName(game, gameList.allGamesHaveTvStreamsAvailable);
+  const renderedHiddenGames = gameList.hiddenGames.map(game => {
+    return renderGame(game, allGamesHaveTvStreamsAvailable);
   });
   
+  let noGamesMessage: string | undefined;
   if (gameList.games.length === 0) {
-    let noGamesMessage: string;
     if (gameList.hiddenGames.length === 0) {
       noGamesMessage = "(no games found)";
     } else if (gameList.hiddenGames.length === 1) {
@@ -145,45 +157,62 @@ const renderGames = (
     } else {
       noGamesMessage = `(${gameList.hiddenGames.length} hidden games)`;
     }
-    gameList.noGamesMessage = noGamesMessage;
   }
+
+  return {
+    gameList,
+    games: renderedGames,
+    hiddenGames: renderedHiddenGames,
+    noGamesMessage,
+  };
 };
 
 export const chooseGame = (
   passive: boolean,
   gameList: ProcessedGameList
 ): Promise<GameSelection> => {
-  renderGames(gameList);
+  const renderedGameList = renderGames(gameList);
   if (passive) {
-    return chooseGamePassively(gameList);
+    return chooseGamePassively(renderedGameList);
   } else {
-    return chooseGameInteractively(gameList);
+    return chooseGameInteractively(renderedGameList);
   }
 };
 
 const chooseGameInteractively = async (
-  gameList: ProcessedGameList
+  gameList: RenderedGameList
 ): Promise<GameSelection> => {
+  const queryDate = gameList.gameList.queryDate;
+  const backValue: GameSelection = {
+    isDateChange: true,
+    newDate: queryDate.minus({ days: 1 }),
+  };
+  const forwardValue: GameSelection = {
+    isDateChange: true,
+    newDate: queryDate.plus({ days: 1 }),
+  };
   let gamesOptions: inquirer.DistinctChoice<inquirer.ListChoiceMap>[] = [
     {
-      value: DIRECTION.BACK,
-      name: "⤺  one day back"
-    }
+      value: backValue,
+      name: "⤺  one day back",
+    },
+    new inquirer.Separator(" "),
+    new inquirer.Separator(queryDate.toFormat("yyyy-MM-dd")),
+    new inquirer.Separator(" "),
   ];
-  gamesOptions.push(new inquirer.Separator(" "));
-  if (gameList.matchDay) {
-    gamesOptions.push(new inquirer.Separator(gameList.matchDay.date));
-  } else {
-    gamesOptions.push(new inquirer.Separator(gameList.queryDate.toLocaleString()));
-  }
-  gamesOptions.push(new inquirer.Separator(" "));
 
   if (gameList.games.length > 0) {
-    gameList.games.forEach(processedGame => {
+    gameList.games.forEach(renderedGame => {
+      const gameValue: GameSelection = {
+        isDateChange: false,
+        cancelSelection: false,
+        processedGame: renderedGame.game,
+      };
+
       gamesOptions.push({
-        value: processedGame,
-        name: processedGame.displayName!,
-        disabled: processedGame.disableReason!,
+        value: gameValue,
+        name: renderedGame.displayName,
+        disabled: renderedGame.disableReason,
       });
     });
   } else {
@@ -191,7 +220,7 @@ const chooseGameInteractively = async (
   }
   gamesOptions.push(new inquirer.Separator(" "));
   gamesOptions.push({
-    value: DIRECTION.FORWARD,
+    value: forwardValue,
     name: "⤻  one day forward"
   });
 
@@ -210,38 +239,21 @@ const chooseGameInteractively = async (
   ];
 
   const gameSelected = await inquirer.prompt(questionsGame);
-
-  if (gameSelected[questionNameGame] === DIRECTION.BACK) {
-    return {
-      isDateChange: true,
-      newDate: gameList.queryDate.minus({ days: 1 }),
-    };
-  } else if (gameSelected[questionNameGame] === DIRECTION.FORWARD) {
-    return {
-      isDateChange: true,
-      newDate: gameList.queryDate.plus({ days: 1 }),
-    };
-  } else {
-    return {
-      isDateChange: false,
-      cancelSelection: false,
-      processedGame: gameSelected[questionNameGame],
-    };
-  }
+  return gameSelected[questionNameGame];
 };
 
 const chooseGamePassively = async (
-  gameList: ProcessedGameList
+  gameList: RenderedGameList
 ): Promise<GameSelection> => {
   if (gameList.games.length === 1) {
-    const processedGame = gameList.games[0];
-    console.log(processedGame.displayName);
+    const renderedGame = gameList.games[0];
+    console.log(renderedGame.displayName);
     return {
       isDateChange: false,
       cancelSelection: false,
-      processedGame,
+      processedGame: renderedGame.game,
     };
-  } else {      
+  } else {
     console.log(
       chalk.yellow(
         "The game couldn't be autoselected."

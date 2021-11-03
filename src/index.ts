@@ -5,13 +5,15 @@ import * as luxon from "luxon";
 import * as yargs from "yargs";
 
 import {
-  getGameList,
-  getStreamList,
   Config,
+  ProcessedGame,
+  ProcessedGameList,
+  ProviderTeam,
+  ProcessedFeedList,
 } from './geekyStreamsApi';
 import {
-  MEDIA_STATE
-} from "./nhlStatsApi";
+  getNhltvGameList,
+} from "./nhltvProvider";
 
 import { chooseFeed } from "./chooseFeed";
 import { chooseGame } from "./chooseGame";
@@ -19,7 +21,6 @@ import { chooseStream } from "./chooseStream";
 import {
   calcRecordingOffset,
 } from "./calcRecordingOffset";
-import { download } from "./download";
 
 interface CommandLineConfig {
   passive: boolean;
@@ -75,54 +76,115 @@ Requires a favourite team and preferred stream quality.`,
     }
 
     const processedGame = gameSelection.processedGame;
-    const game = processedGame.game;
-    const feedSelection = await chooseFeed(argv.passive, processedGame.feedList!);
+    const feedSelection = await chooseFeed(argv.passive, processedGame);
     if (feedSelection.cancelSelection) {
       return;
     }
     const processedFeed = feedSelection.processedFeed;
-    const feed = processedFeed.epgItem;
+    const feedInfo = processedFeed.info;
     
-    const streamList = await getStreamList(config, processedFeed);
-    if (!streamList.auth || !streamList.mediaAuth || streamList.unknownError) {
+    const streamList = await processedFeed.providerFeed.getStreamList(config);
+    if (streamList.unknownError) {
       throw new Error(streamList.unknownError);
     }
 
-    const streamSelection = await chooseStream(argv.passive, streamList);
+    const streamSelection = await chooseStream(argv.passive, config.preferredStreamQuality, streamList);
     if (streamSelection.cancelSelection) {
       return;
     } else if (streamSelection.selectNewGame) {
       continue;
     }
 
+    const providerStream = streamSelection.providerStream;
+    const processedStream = providerStream.getStream();
+
     const filename = [
-      luxon.DateTime.fromISO(game.gameDate)
+      processedGame.gameDateTime
         .setZone(config.matchTimeZone)
         .toISODate(),
-      game.teams.away.team.abbreviation.replace(/\s+/g, "_"),
+      processedGame.awayTeam.abbreviation.replace(/\s+/g, "_"),
       "at",
-      game.teams.home.team.abbreviation.replace(/\s+/g, "_"),
-      "(" + feed.mediaFeedType + (feed.callLetters && "_") + feed.callLetters.replace('+', 'plus') + ")",
-      streamSelection.processedStream.resolution,
-      feed.mediaState === MEDIA_STATE.ON ? "live" : "archive"
+      processedGame.homeTeam.abbreviation.replace(/\s+/g, "_"),
+      "(" + feedInfo.mediaFeedType + (feedInfo.callLetters && "_") + feedInfo.callLetters.replace('+', 'plus') + ")",
+      processedStream.resolution,
+      processedFeed.isLiveTvStream ? "live" : "archive"
     ].join("_");
   
     const recordingOffset = calcRecordingOffset(
       filename,
-      game,
-      feed.mediaState,
+      processedGame.gameDateTime,
+      processedFeed.isLiveTvStream,
       config
     );
-  
-    return download(
+
+    return providerStream.download(
       filename,
       recordingOffset,
-      streamList.auth,
-      streamList.mediaAuth,
-      streamSelection.processedStream,
       config.streamlinkExtraOptions
     );
   }
 };
+
+const getGameList = async (
+  config: Config,
+  date: luxon.DateTime
+): Promise<ProcessedGameList> => {
+  const nhltvGames = await getNhltvGameList(config, date);
+  
+  const games: ProcessedGame[] = [];
+  const hiddenGames: ProcessedGame[] = [];
+
+  nhltvGames.forEach(providerGame => {
+    const awayTeam = providerGame.getAwayTeam();
+    const homeTeam = providerGame.getHomeTeam();
+    const isAwayTeamFavourite = isFavouriteTeam(awayTeam, config.favouriteTeams);
+    const isHomeTeamFavourite = isFavouriteTeam(homeTeam, config.favouriteTeams);
+    const hasFavouriteTeam = isAwayTeamFavourite || isHomeTeamFavourite;
+
+    let isArchiveTvStreamAvailable = false;
+    let isLiveTvStreamAvailable = false;
+    const feeds = providerGame.getFeeds().map(f => {
+      const processedFeed = f.getFeed();
+      isArchiveTvStreamAvailable = isArchiveTvStreamAvailable || processedFeed.isArchiveTvStream;
+      isLiveTvStreamAvailable = isLiveTvStreamAvailable || processedFeed.isLiveTvStream;
+      return processedFeed;
+    });
+    const feedList: ProcessedFeedList = {
+      feeds,
+      isArchiveTvStreamAvailable,
+      isLiveTvStreamAvailable,
+      isTvStreamAvailable: isArchiveTvStreamAvailable || isLiveTvStreamAvailable,
+    };
+
+    const processedGame: ProcessedGame = {
+      feedList,
+      awayTeam,
+      homeTeam,
+      status: providerGame.getStatus(),
+      gameDateTime: providerGame.getGameDateTime(),
+      hasFavouriteTeam,
+      isAwayTeamFavourite,
+      isHomeTeamFavourite,
+    };
+
+    const showGame = !config.hideOtherTeams || processedGame.hasFavouriteTeam;
+    if (showGame) {
+      games.push(processedGame);
+    } else {
+      hiddenGames.push(processedGame);
+    }
+  });
+
+  return {
+    games,
+    hiddenGames,
+    queryDate: date,
+  };
+};
+
+const isFavouriteTeam = (
+  team: ProviderTeam,
+  favouriteTeamsAbbreviations: string[] | undefined
+): boolean => !!favouriteTeamsAbbreviations && favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
 
 main();

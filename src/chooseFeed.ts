@@ -5,49 +5,91 @@ import * as _ from "lodash";
 import {
   FeedSelection,
   ProcessedFeed,
-  ProcessedFeedList,
+  ProcessedGame,
 } from "./geekyStreamsApi";
+import { MediaFeedType } from "./nhlStatsApi";
+
+interface RenderedFeed {
+  displayName: string;
+  isForFavouriteTeam: boolean;
+  processedFeed: ProcessedFeed;
+}
+
+interface RenderedFeedList {
+  feeds: RenderedFeed[];
+  preferredFeeds: RenderedFeed[];
+}
 
 const renderFeedName = (
-  feed: ProcessedFeed
+  feed: ProcessedFeed,
+  isForFavouriteTeam: boolean
 ): string => {
   const name = _.compact([
-    feed.epgItem.mediaFeedType,
-    feed.epgItem.callLetters,
-    feed.epgItem.feedName
+    feed.info.mediaFeedType,
+    feed.info.callLetters,
+    feed.info.feedName
   ]).join(", ");
 
-  const feedName = feed.isForFavouriteTeam ? chalk.yellow(name) : name;
+  const feedName = isForFavouriteTeam ? chalk.yellow(name) : name;
   return feedName;
 };
 
+const renderFeed = (game: ProcessedGame, feed: ProcessedFeed): RenderedFeed => {
+  const isForFavouriteTeam = feed.info.mediaFeedType === MediaFeedType.National && game.hasFavouriteTeam ||
+                             feed.info.mediaFeedType === MediaFeedType.Away && game.isAwayTeamFavourite ||
+                             feed.info.mediaFeedType === MediaFeedType.Home && game.isHomeTeamFavourite;
+
+  return {
+    displayName: renderFeedName(feed, isForFavouriteTeam),
+    isForFavouriteTeam,
+    processedFeed: feed,
+  };
+}
+
 const renderFeeds = (
-  feedList: ProcessedFeedList
-): void => {
-  feedList.feeds.forEach(feed => {
-    feed.displayName = renderFeedName(feed);
+  game: ProcessedGame
+): RenderedFeedList => {
+  const preferredFeeds: RenderedFeed[] = [];
+  const feeds = game.feedList.feeds.map(feed => {
+    const renderedFeed = renderFeed(game, feed);
+    if (renderedFeed.isForFavouriteTeam) {
+      preferredFeeds.push(renderedFeed);
+    }
+    return renderedFeed;
   });
+
+  return {
+    feeds,
+    preferredFeeds,
+  };
 };
 
 export const chooseFeed = (
   passive: boolean,
-  feedList: ProcessedFeedList
+  game: ProcessedGame
 ): Promise<FeedSelection> => {
-  renderFeeds(feedList);
+  const renderedFeedList = renderFeeds(game);
   if (passive) {
-    return chooseFeedPassively(feedList);
+    return chooseFeedPassively(renderedFeedList);
   } else {
-    return chooseFeedInteractively(feedList);
+    return chooseFeedInteractively(renderedFeedList);
   }
 };
 
 const chooseFeedInteractively = async (
-  feedList: ProcessedFeedList
+  feedList: RenderedFeedList
 ): Promise<FeedSelection> => {
-  const feedOptions = feedList.feeds.map(feed => ({
-    value: feed,
-    name: feed.displayName!,
-  }));
+  const feedOptions = feedList.feeds.map(feed => {
+    const feedValue: FeedSelection = {
+      cancelSelection: false,
+      processedFeed: feed.processedFeed,
+    };
+
+    return {
+      value: feedValue,
+      name: feed.displayName,
+    };
+  });
 
   const questionNameFeed = "feed";
 
@@ -61,22 +103,19 @@ const chooseFeedInteractively = async (
   ];
 
   const feedSelected = await inquirer.prompt(questionsFeed);
-  const feedSelection: FeedSelection = {
-    cancelSelection: false,
-    processedFeed: feedSelected[questionNameFeed],
-  };
-  return feedSelection;
+  return feedSelected[questionNameFeed];
 };
 
 const chooseFeedPassively = async (
-  feedList: ProcessedFeedList
+  feedList: RenderedFeedList
 ): Promise<FeedSelection> => {
   if (feedList.preferredFeeds.length === 1) {
+    const selectedFeed = feedList.preferredFeeds[0];
     const feedSelection: FeedSelection = {
       cancelSelection: false,
-      processedFeed: feedList.preferredFeeds[0],
+      processedFeed: selectedFeed.processedFeed,
     };
-    console.log(feedSelection.processedFeed.displayName);
+    console.log(selectedFeed.displayName);
     return feedSelection;
   } else {      
     console.log(

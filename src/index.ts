@@ -10,7 +10,14 @@ import {
   ProcessedGameList,
   ProviderTeam,
   ProcessedFeedList,
+  ProviderGame,
+  getGameId,
+  ProcessedFeed,
+  setLogTimings,
 } from './geekyStreamsApi';
+import {
+  getEspnGameList,
+} from "./espnProvider";
 import {
   getNhltvGameList,
 } from "./nhltvProvider";
@@ -58,6 +65,7 @@ Requires a favourite team and preferred stream quality.`,
   const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.length);
   config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams ||
                           argv.passive;
+  setLogTimings(!!config.enableLogTimings);
 
   if (!startDate) {
     // will set timezone to somewhat central US so that we always get all matches
@@ -67,23 +75,41 @@ Requires a favourite team and preferred stream quality.`,
   let dateLastSelected = startDate;
   while (true) {
     const gameList = await getGameList(config, dateLastSelected);
-    const gameSelection = await chooseGame(argv.passive, gameList);
-    if (gameSelection.isDateChange) {
-      dateLastSelected = gameSelection.newDate;
-      continue;
-    } else if (gameSelection.cancelSelection) {
-      return;
+    
+    let processedGame: ProcessedGame | null = null;
+    let processedFeed: ProcessedFeed | null = null;
+
+    while (true) {
+      processedGame = null;
+      processedFeed = null;
+
+      const gameSelection = await chooseGame(argv.passive, gameList);
+      if (gameSelection.isDateChange) {
+        dateLastSelected = gameSelection.newDate;
+        break;
+      } else if (gameSelection.cancelSelection) {
+        return;
+      }
+
+      processedGame = gameSelection.processedGame;
+
+      const feedSelection = await chooseFeed(config, argv.passive, processedGame);
+      if (feedSelection.isGameChange) {
+        continue;
+      } else if (feedSelection.cancelSelection) {
+        return;
+      }
+
+      processedFeed = feedSelection.processedFeed;
+
+      break;
     }
 
-    const processedGame = gameSelection.processedGame;
-    const feedSelection = await chooseFeed(argv.passive, processedGame);
-    if (feedSelection.cancelSelection) {
-      return;
+    if (!processedGame || !processedFeed) {
+      continue;
     }
-    const processedFeed = feedSelection.processedFeed;
-    const feedInfo = processedFeed.info;
-    
-    const streamList = await processedFeed.providerFeed.getStreamList(config);
+
+    const streamList = await processedFeed.providerFeed.getStreamList(config, argv.passive);
     if (streamList.unknownError) {
       throw new Error(streamList.unknownError);
     }
@@ -97,15 +123,16 @@ Requires a favourite team and preferred stream quality.`,
 
     const providerStream = streamSelection.providerStream;
     const processedStream = providerStream.getStream();
+    const feedInfo = processedFeed.info;
 
     const filename = [
       processedGame.gameDateTime
         .setZone(config.matchTimeZone)
         .toISODate(),
-      processedGame.awayTeam.abbreviation.replace(/\s+/g, "_"),
+      sanitizeFeedInfoForFileName(processedGame.awayTeam.abbreviation),
       "at",
-      processedGame.homeTeam.abbreviation.replace(/\s+/g, "_"),
-      "(" + feedInfo.mediaFeedType + (feedInfo.callLetters && "_") + feedInfo.callLetters.replace('+', 'plus') + ")",
+      sanitizeFeedInfoForFileName(processedGame.homeTeam.abbreviation),
+      "(" + feedInfo.mediaFeedType + (feedInfo.callLetters && "_") + sanitizeFeedInfoForFileName(feedInfo.callLetters) + ")",
       processedStream.resolution,
       processedFeed.isLiveTvStream ? "live" : "archive"
     ].join("_");
@@ -129,21 +156,44 @@ const getGameList = async (
   config: Config,
   date: luxon.DateTime
 ): Promise<ProcessedGameList> => {
-  const nhltvGames = await getNhltvGameList(config, date);
+  const nhltvGamesPromise = getNhltvGameList(config, date);
+  const espnGamesPromise = getEspnGameList(config, date);
+  const nhltvGames = await nhltvGamesPromise;
+  const espnGames = await espnGamesPromise;
   
+  const gamesById = new Map<string, ProviderGame[]>();
   const games: ProcessedGame[] = [];
   const hiddenGames: ProcessedGame[] = [];
+  
+  [...nhltvGames, ...espnGames].forEach(providerGame => {
+    const key = getGameId(providerGame.getGameDateTime(), providerGame.getAwayTeam(), providerGame.getHomeTeam());
 
-  nhltvGames.forEach(providerGame => {
+    let collection = gamesById.get(key);
+    if (!collection) {
+      collection = [];
+      gamesById.set(key, collection);
+    }
+
+    collection.push(providerGame);
+  });
+
+  gamesById.forEach(providerGames => {
+    const providerGame = providerGames[0];
+    const gameDateTime = providerGame.getGameDateTime();
     const awayTeam = providerGame.getAwayTeam();
     const homeTeam = providerGame.getHomeTeam();
     const isAwayTeamFavourite = isFavouriteTeam(awayTeam, config.favouriteTeams);
     const isHomeTeamFavourite = isFavouriteTeam(homeTeam, config.favouriteTeams);
     const hasFavouriteTeam = isAwayTeamFavourite || isHomeTeamFavourite;
 
+    let providerFeeds = providerGame.getFeeds();
+    for (let i = 1; i < providerGames.length; i++) {
+      providerFeeds = providerFeeds.concat(providerGames[i].getFeeds());
+    }
+
     let isArchiveTvStreamAvailable = false;
     let isLiveTvStreamAvailable = false;
-    const feeds = providerGame.getFeeds().map(f => {
+    const feeds = providerFeeds.map(f => {
       const processedFeed = f.getFeed();
       isArchiveTvStreamAvailable = isArchiveTvStreamAvailable || processedFeed.isArchiveTvStream;
       isLiveTvStreamAvailable = isLiveTvStreamAvailable || processedFeed.isLiveTvStream;
@@ -161,7 +211,7 @@ const getGameList = async (
       awayTeam,
       homeTeam,
       status: providerGame.getStatus(),
-      gameDateTime: providerGame.getGameDateTime(),
+      gameDateTime,
       hasFavouriteTeam,
       isAwayTeamFavourite,
       isHomeTeamFavourite,
@@ -186,5 +236,9 @@ const isFavouriteTeam = (
   team: ProviderTeam,
   favouriteTeamsAbbreviations: string[] | undefined
 ): boolean => !!favouriteTeamsAbbreviations && favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
+
+const sanitizeFeedInfoForFileName = (s: string): string => {
+  return s ? s.replace(/(\s|\.)+/g, "_").replace('+', 'plus') : s;
+}
 
 main();

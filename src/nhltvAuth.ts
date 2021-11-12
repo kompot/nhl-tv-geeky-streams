@@ -15,6 +15,7 @@ import {
   // CDN,
   // SESSION_ATTRIBUTE_NAME
 } from "./nhlMfApi";
+import { timeXhrPost, timeXhrRequest } from "./geekyStreamsApi";
 
 const mfApi = axiosRestyped.create<NhlMfApi>({
   baseURL: NhlMfApiBaseUrl
@@ -37,7 +38,7 @@ type AuthSessionDisk = AuthSession & {
   timestamp: number;
 };
 
-const sessionFile = "./tmp/session.json";
+const sessionFile = "./tmp/session.nhltv.json";
 const sessionValidInMinutes = 4 * 60;
 
 const getPreviousAuthSession = (): AuthSession | undefined => {
@@ -71,7 +72,8 @@ export const getAuthSession = async (
     return Promise.resolve(prevAuthData);
   }
 
-  const { data: { access_token } } = await userApi.post(
+  const { data: { access_token } } = await timeXhrPost(
+    userApi,
     "/oauth/token?grant_type=client_credentials",
     null,
     {
@@ -82,7 +84,8 @@ export const getAuthSession = async (
   );
   let r;
   try {
-    r = await userApi.post(
+    r = await timeXhrPost(
+      userApi,
       "/v2/user/identity",
       {
         email: {
@@ -116,7 +119,7 @@ export const getAuthSession = async (
 
   const authHeader = authorizationCookie.Authorization;
 
-  const r2 = await mfApi.request({
+  const r2 = await timeXhrRequest(mfApi, {
     url: "/ws/media/mf/v2.4/stream",
     params: {
       eventId,

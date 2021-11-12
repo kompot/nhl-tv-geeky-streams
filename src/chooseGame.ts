@@ -33,106 +33,108 @@ const paddingForChalk = 10;
 const renderTeam = (
   team: ProviderTeam,
   isFavTeam: boolean,
-  isTvStreamAvailable: boolean,
+  isDisabled: boolean,
   padStart: boolean
 ): string => {
   const tName = isFavTeam ? chalk.yellow(team.fullName) : team.fullName;
-  const favTeamPadding = isFavTeam ? paddingForChalk : 0;
-  const teamPadEnd = _.padEnd(tName, maxTeamLength + favTeamPadding);
-  if (!padStart) {
+  const endPadding = maxTeamLength + (isFavTeam ? paddingForChalk : 0);
+  const startPadding = !isDisabled && padStart ? endPadding + 2 : 0;
+  const teamPadEnd = _.padEnd(tName, endPadding);
+  if (!startPadding) {
     return teamPadEnd;
   }
-  return _.padStart(
-    teamPadEnd,
-    (isTvStreamAvailable ? maxTeamLength + 2 : maxTeamLength) +
-      favTeamPadding
-  );
+  return _.padStart(teamPadEnd, startPadding);
 };
 
 const renderGameName = (
   processedGame: ProcessedGame,
-  allGamesHaveStreamsAvailable: boolean
+  allGamesHaveStreamsAvailable: boolean,
+  disableReason: string | undefined
 ): string => {
   if (!processedGame.feedList) {
     throw new Error("No feeds for game");
   }
 
-  const isTvStreamAvailable = processedGame.feedList.isTvStreamAvailable;
   let name = renderTeam(
     processedGame.awayTeam,
     processedGame.isAwayTeamFavourite,
-    isTvStreamAvailable,
-    !allGamesHaveStreamsAvailable
+    !!disableReason,
+    true
   );
   name += chalk.gray(" @ ");
   name += renderTeam(
     processedGame.homeTeam,
     processedGame.isHomeTeamFavourite,
-    isTvStreamAvailable,
+    !!disableReason,
     false
   );
+
+  const hoursPassedFromGameStart = luxon.DateTime.local().diff(processedGame.gameDateTime).as("hours");
   const gameStatus = processedGame.status;
-  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.PREGAME) {
-    name += " " + gameStatus.status.detailedState;
+  switch (gameStatus?.status.detailedState) {
+    case GAME_DETAILED_STATE.PREGAME:
+      name += " " + gameStatus.status.detailedState;
+      break;
+    case GAME_DETAILED_STATE.INPROGRESS:
+      name +=
+        " " +
+        gameStatus.linescore.currentPeriodOrdinal +
+        " " +
+        gameStatus.linescore.currentPeriodTimeRemaining;
+      break;
+    case GAME_DETAILED_STATE.INPROGRESSCRITICAL:
+      name += " soon to end";
+      break;
+    case GAME_DETAILED_STATE.SCHEDULED:
+      if (processedGame.feedList.isTvStreamAvailable) {
+        name += " soon to start";
+      }
+      break;
+    case GAME_DETAILED_STATE.GAMEOVER:
+    case GAME_DETAILED_STATE.FINAL:
+      if (hoursPassedFromGameStart < 1) {
+        name += " soon to end";
+      } else if (processedGame.feedList.isArchiveTvStreamAvailable) {
+        if (hoursPassedFromGameStart < 8) {
+          name += " ended, archive stream";
+        }
+      } else if (processedGame.feedList.isLiveTvStreamAvailable) {
+        name += " ended, live stream";
+      }
+      break;
   }
-  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.INPROGRESS) {
-    name +=
-      " " +
-      gameStatus.linescore.currentPeriodOrdinal +
-      " " +
-      gameStatus.linescore.currentPeriodTimeRemaining;
+
+
+  if (!processedGame.feedList.isTvStreamAvailable) {
+    const dur = processedGame.gameDateTime.diffNow();
+    const durAsHour = dur.as("hours");
+    if (durAsHour < 0) {
+      name += chalk.gray("(no streams available)");
+    } else if (durAsHour < 24) {
+      name += `(starts in ${dur.toFormat("h:mm")})`;
+    } else if (gameStatus) {
+      name += chalk.gray("(" + gameStatus.status.detailedState.toLowerCase() + ")");
+    } else {
+      name += chalk.gray("(no streams available)");
+    }
   }
-  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.INPROGRESSCRITICAL) {
-    name += " soon to end";
-  }
-  if (
-    isTvStreamAvailable &&
-    gameStatus?.status.detailedState === GAME_DETAILED_STATE.SCHEDULED
-  ) {
-    name += " soon to start";
-  }
-  if (
-    processedGame.feedList.isLiveTvStreamAvailable &&
-    (gameStatus?.status.detailedState === GAME_DETAILED_STATE.GAMEOVER ||
-      gameStatus?.status.detailedState === GAME_DETAILED_STATE.FINAL)
-  ) {
-    name += " ended, live stream";
-  }
-  const passedFromGameStart = luxon.DateTime.local().diff(processedGame.gameDateTime);
-  if (
-    processedGame.feedList.isArchiveTvStreamAvailable &&
-    passedFromGameStart.as("hours") < 8
-  ) {
-    name += " ended, archive stream";
-  }
+
   return name;
 };
 
 const isGameDisabledForDownloadAndReasonWhy = (
   processedGame: ProcessedGame
 ): string | undefined => {
-  const gameStatus = processedGame.status;
-  if (gameStatus?.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
+  if (processedGame.status?.status.detailedState === GAME_DETAILED_STATE.POSTPONED) {
     return "postponed";
-  } else if (!processedGame.feedList.isTvStreamAvailable) {
-    const dur = processedGame.gameDateTime.diffNow();
-    const durAsHour = dur.as("hours");
-    if (durAsHour < 0) {
-      return chalk.gray("no streams available");
-    } else if (durAsHour < 24) {
-      return `starts in ${dur.toFormat("h:mm")}`;
-    } else if (gameStatus) {
-      return chalk.gray(gameStatus.status.detailedState.toLowerCase());
-    } else {
-      return chalk.gray("no streams available");
-    }
   }
 };
 
 const renderGame = (game: ProcessedGame, allGamesHaveStreamsAvailable: boolean): RenderedGame => {
+  const disableReason = isGameDisabledForDownloadAndReasonWhy(game);
   return {
-    disableReason: isGameDisabledForDownloadAndReasonWhy(game),
-    displayName: renderGameName(game, allGamesHaveStreamsAvailable),
+    disableReason,
+    displayName: renderGameName(game, allGamesHaveStreamsAvailable, disableReason),
     game,
   };
 };
@@ -183,18 +185,20 @@ const chooseGameInteractively = async (
   gameList: RenderedGameList
 ): Promise<GameSelection> => {
   const queryDate = gameList.gameList.queryDate;
+  const backDate = queryDate.minus({ days: 1 });
+  const forwardDate = queryDate.plus({ days: 1 });
   const backValue: GameSelection = {
     isDateChange: true,
-    newDate: queryDate.minus({ days: 1 }),
+    newDate: backDate,
   };
   const forwardValue: GameSelection = {
     isDateChange: true,
-    newDate: queryDate.plus({ days: 1 }),
+    newDate: forwardDate,
   };
   let gamesOptions: inquirer.DistinctChoice<inquirer.ListChoiceMap>[] = [
     {
       value: backValue,
-      name: "⤺  one day back",
+      name: `⤺  one day back (${backDate.toFormat("yyyy-MM-dd")})`,
     },
     new inquirer.Separator(" "),
     new inquirer.Separator(queryDate.toFormat("yyyy-MM-dd")),
@@ -221,7 +225,7 @@ const chooseGameInteractively = async (
   gamesOptions.push(new inquirer.Separator(" "));
   gamesOptions.push({
     value: forwardValue,
-    name: "⤻  one day forward"
+    name: `⤻  one day forward (${forwardDate.toFormat("yyyy-MM-dd")})`
   });
 
   const questionNameGame = "game";

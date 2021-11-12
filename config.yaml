@@ -38,6 +38,10 @@ hideOtherTeams: false
 # 'best' and 'worst' are also available
 #preferredStreamQuality: best
 
+# preferred provider
+# 'nhltv' or 'espn'
+# preferredProvider: nhltv
+
 
 # ===================================
 # everything below is NOT working yet

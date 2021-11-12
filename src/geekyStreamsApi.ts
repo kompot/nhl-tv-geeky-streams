@@ -1,6 +1,8 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import * as _ from "lodash";
 import * as luxon from "luxon";
+import { RestypedBase } from "restyped";
+import { TypedAxiosInstance, TypedAxiosRequestConfig, TypedAxiosResponse } from "restyped-axios";
 const m3u8Parser = require("m3u8-parser");
 
 import {
@@ -16,8 +18,9 @@ export interface Config {
   favouriteTeams?: string[];
   streamlinkExtraOptions?: string[];
   hideOtherTeams?: boolean;
+  preferredProvider?: string;
   preferredStreamQuality?: string;
-  startDownloadingIfSingleGameFound: true;
+  enableLogTimings?: boolean;
 }
 
 export interface OffsetObject {
@@ -52,8 +55,9 @@ export interface ProcessedFeedList {
 }
 
 export interface ProviderFeed {
+  providerName: string;
   getFeed(): ProcessedFeed;
-  getStreamList(config: Config): Promise<ProviderStreamList>;
+  getStreamList(config: Config, passive: boolean): Promise<ProviderStreamList>;
 }
 
 export interface ProviderGame {
@@ -77,6 +81,7 @@ export interface ProviderGameStatus {
 export interface ProviderTeam {
   abbreviation: string,
   fullName: string,
+  nickname: string,
 }
 
 export interface ProviderStream {
@@ -115,9 +120,15 @@ export interface ProcessedStream {
 }
 
 export type FeedSelection = {
+  isGameChange: true;
+  cancelSelection?: never;
+  processedFeed?: never;
+} | {
+  isGameChange: false;
   cancelSelection: true;
   processedFeed?: never;
 } | {
+  isGameChange: false;
   cancelSelection: false;
   processedFeed: ProcessedFeed;
 }
@@ -177,7 +188,7 @@ const processStream = (
 export const getProcessedStreams = async (
   masterUrl: string
 ): Promise<ProcessedStream[]> => {
-  const masterPlaylistContent = await axios.get(masterUrl);
+  const masterPlaylistContent = await timeXhrFetch(masterUrl);
 
   const parser = new m3u8Parser.Parser();
   parser.push(masterPlaylistContent.data);
@@ -190,3 +201,61 @@ export const getProcessedStreams = async (
 
   return streams;
 };
+
+export const getGameId = (gameDateTime: luxon.DateTime, awayTeam: ProviderTeam, homeTeam: ProviderTeam): string => {
+  return `${gameDateTime.toFormat("yyyy_MM_dd")}_${awayTeam.nickname}_${homeTeam.nickname}`;
+}
+
+let enableLogTimings = false;
+export const setLogTimings = (enable: boolean): void => {
+  enableLogTimings = enable;
+}
+
+export const timeXhrFetch = async (url: string, config?: AxiosRequestConfig): Promise<AxiosResponse> => {
+  const start = new Date();
+  if (enableLogTimings) console.log('beginFetch', url, start);
+  const result = await axios.get(url, config);
+  const end = new Date();
+  if (enableLogTimings) console.log('endFetch', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  return result;
+}
+
+export const timeXhrGet = async <TAPI extends RestypedBase, TPath extends Extract<keyof TAPI, string>>(
+  axiosInstance: TypedAxiosInstance<TAPI>,
+  url: TPath | string,
+  config?: TypedAxiosRequestConfig<TAPI, TPath, 'GET'>
+): Promise<TypedAxiosResponse<TAPI, TPath, 'GET'>> => {
+  const id = config?.params?.id;
+  const start = new Date();
+  if (enableLogTimings) console.log('beginGet', url, id, start);
+  const result = await axiosInstance.get(url, config);
+  const end = new Date();
+  if (enableLogTimings) console.log('endGet', url, id, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  return result;
+}
+
+export const timeXhrPost = async <TAPI extends RestypedBase, TPath extends Extract<keyof TAPI, string>>(
+  axiosInstance: TypedAxiosInstance<TAPI>,
+  url: TPath | string,
+  data?: TAPI[TPath]['POST']['body'],
+  config?: TypedAxiosRequestConfig<TAPI, TPath, 'POST'>
+): Promise<TypedAxiosResponse<TAPI, TPath, 'POST'>> => {
+  const start = new Date();
+  if (enableLogTimings) console.log('beginPost', url, start);
+  const result = await axiosInstance.post(url, data, config);
+  const end = new Date();
+  if (enableLogTimings) console.log('endPost', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  return result;
+}
+
+export const timeXhrRequest = async <TAPI extends RestypedBase, TPath extends Extract<keyof TAPI, string>, TMethod extends keyof TAPI[TPath] = 'GET'>(
+  axiosInstance: TypedAxiosInstance<TAPI>,
+  config: TypedAxiosRequestConfig<TAPI, TPath, TMethod>
+): Promise<TypedAxiosResponse<TAPI, TPath, TMethod>> => {
+  const start = new Date();
+  if (enableLogTimings) console.log('beginRequest', config.url, start);
+  const result = await axiosInstance.request(config);
+  const end = new Date();
+  if (enableLogTimings) console.log('endRequest', config.url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  return result;
+}

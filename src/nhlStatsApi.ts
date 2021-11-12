@@ -35,7 +35,10 @@ export enum MediaFeedType {
   Away = "AWAY",
   National = "NATIONAL",
   Composite = "COMPOSITE",
-  Iso = "ISO"
+  Iso = "ISO",
+  French = "FRENCH",
+  Spanish = "SPANISH",
+  Unknown = "UNKNOWN",
 }
 
 export enum MEDIA_STATE {

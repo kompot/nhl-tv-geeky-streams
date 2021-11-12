@@ -22,6 +22,7 @@ import {
   ProviderStream,
   ProviderStreamList,
   ProviderTeam,
+  timeXhrRequest,
 } from "./geekyStreamsApi";
 import {
   BLACKOUT_STATUS,
@@ -40,6 +41,7 @@ import {
   MEDIA_STATE,
   NhlStatsApi,
   NhlStatsApiBaseUrl,
+  Team,
 } from "./nhlStatsApi";
 
 const gamesFile = "./tmp/games.nhltv.json";
@@ -53,6 +55,7 @@ const statsApi = axiosRestyped.create<NhlStatsApi>({
 });
 
 class NhltvFeed implements ProviderFeed {
+  providerName: string = "NHL.TV";
   epgItem: EpgItem;
 
   constructor(epgItem: EpgItem) {
@@ -93,14 +96,8 @@ class NhltvGame implements ProviderGame {
       this.feeds.push(new NhltvFeed(epgItem));
     });
 
-    this.awayTeam = {
-      abbreviation: this.game.teams.away.team.abbreviation,
-      fullName: this.game.teams.away.team.name,
-    };
-    this.homeTeam = {
-      abbreviation: this.game.teams.home.team.abbreviation,
-      fullName: this.game.teams.home.team.name,
-    };
+    this.awayTeam = getProviderTeam(this.game.teams.away.team);
+    this.homeTeam = getProviderTeam(this.game.teams.home.team);
 
     this.gameDateTime = luxon.DateTime.fromISO(this.game.gameDate);
   }
@@ -156,6 +153,14 @@ class NhltvStream implements ProviderStream {
   }
 }
 
+const getProviderTeam = (team: Team): ProviderTeam => {
+  return {
+    abbreviation: team.abbreviation,
+    fullName: team.name,
+    nickname: team.teamName,
+  };
+}
+
 const processGame = (
   game: Game
 ): ProviderGame => {
@@ -167,7 +172,7 @@ export const getNhltvGameList = async (
   config: Config,
   date: luxon.DateTime
 ): Promise<ProviderGame[]> => {
-  const { data: { dates } } = await statsApi.request({
+  const { data: { dates } } = await timeXhrRequest(statsApi, {
     url: "/schedule",
     params: {
       startDate: date.toISODate(),
@@ -208,7 +213,7 @@ const getNhltvStreamList = async (
     throw e;
   }
 
-  const r1 = await mfApi.request({
+  const r1 = await timeXhrRequest(mfApi, {
     url: "/ws/media/mf/v2.4/stream",
     params: {
       contentId: Number(epgItem.mediaPlaybackId),

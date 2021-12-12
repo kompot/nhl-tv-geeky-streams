@@ -34,7 +34,7 @@ import {
   ProviderStreamList,
   ProviderTeam,
   timeXhrFetch,
-  timeXhrGet,
+  timeXhrRequest,
 } from "./geekyStreamsApi";
 import {
   MediaFeedType,
@@ -284,7 +284,8 @@ export const getEspnGameList = async (
   config: Config,
   date: luxon.DateTime
 ): Promise<ProviderGame[]> => {
-  const scoreboardPromise = timeXhrGet(espnSiteApi, "/scoreboard", {
+  const scoreboardPromise = timeXhrRequest(espnSiteApi, {
+    url: "/scoreboard",
     params: {
       dates: date.toFormat("yyyyMMdd"),
     },
@@ -377,7 +378,8 @@ const getEspnScheduleForDate = async (
   query += " } fragment airingFields on Airing { id airingId eventId simulcastAiringId name type startDateTime shortDate: startDate(style: SHORT) authTypes adobeRSS duration feedName network { id type abbreviation name shortName adobeResource isIpAuth } source { url authorizationType hasPassThroughAds hasNielsenWatermarks hasEspnId3Heartbeats commercialReplacement } packages { name } category { id name } subcategory { id name } sport { id name abbreviation code } league { id name abbreviation code } program { id code categoryCode isStudio } }";
   try {
     const variables = `{"deviceType":"DESKTOP","countryCode":"US","tz":"${timeZone}","packages":null,"categories":["2512ac76-a335-39cb-af51-b9afffc6571d"],"day":"${shortDate}","nextDay":"${nextShortDate}","limit":500}`;
-    const response = await timeXhrGet(espnWatchGraphqlApi, "/api", {
+    const response = await timeXhrRequest(espnWatchGraphqlApi, {
+      url: "/api",
       params: {
         apiKey,
         query,
@@ -422,7 +424,8 @@ const getEspnScheduleForDate = async (
           return;
         }
 
-        const eventInfoResponse = airing.feedName || !airing.eventId ? null : timeXhrGet(espnWatchProductApi, "/api/product/v3/watchespn/web/event", {
+        const eventInfoResponse = airing.feedName || !airing.eventId ? null : timeXhrRequest(espnWatchProductApi, {
+          url: "/api/product/v3/watchespn/web/event",
           params: {
             lang: "en",
             //features: "watch-web-redesign,imageRatio58x13,promoTiles,openAuthz",

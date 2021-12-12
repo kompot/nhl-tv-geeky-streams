@@ -22,7 +22,13 @@ import {
   RegisterDisneyApi,
   RegisterDisneyRefreshedLicensePlateData,
 } from "./espnAuthApi";
-import { timeXhrFetch, timeXhrGet, timeXhrPost } from "./geekyStreamsApi";
+import {
+  timeXhrFetch,
+  timeXhrGet,
+  timeXhrPost,
+  timeXhrRequest,
+  timeXhrRequestPost
+} from "./geekyStreamsApi";
 
 const registerDisneyApi = axiosRestyped.create<RegisterDisneyApi>({
   baseURL: "https://registerdisney.go.com/jgc/v6/client"
@@ -70,7 +76,9 @@ const sessionFile = "./tmp/session.espn.json";
 
 const getRegisterDisneyApiKey = async (): Promise<RegisterDisneyApiKeyData> => {  
   try {
-    const apikeyResponse = await timeXhrPost(registerDisneyApi, "/ESPN-OTT.GC.ANDTV-PROD/api-key");
+    const apikeyResponse = await timeXhrRequestPost(registerDisneyApi, {
+      url: "/ESPN-OTT.GC.ANDTV-PROD/api-key",
+    });
 
     return {
       apikey: apikeyResponse.headers["api-key"] as string,
@@ -88,10 +96,9 @@ const getRegisterDisneyApiKey = async (): Promise<RegisterDisneyApiKeyData> => {
 
 const getRegisterDisneyLicensePlate = async (apiKeyData: RegisterDisneyApiKeyData): Promise<RegisterDisneyLicensePlateData> => {  
   try {
-    const licensePlateResponse = await timeXhrPost(
-      registerDisneyApi,
-      "/ESPN-OTT.GC.ANDTV-PROD/license-plate",
-      {
+    const licensePlateResponse = await timeXhrRequestPost(registerDisneyApi, {
+      url: "/ESPN-OTT.GC.ANDTV-PROD/license-plate",
+      data: {
         content: {
           "correlation-id": apiKeyData.correlationId,
           deviceType: DeviceType.ANDTV,
@@ -100,11 +107,10 @@ const getRegisterDisneyLicensePlate = async (apiKeyData: RegisterDisneyApiKeyDat
         },
         ttl: 0,
       },
-      {
-        headers: {
-          Authorization: "APIKEY " + apiKeyData.apikey,
-        },
-      });
+      headers: {
+        Authorization: "APIKEY " + apiKeyData.apikey,
+      },
+    });
 
     return licensePlateResponse.data.data;
   }
@@ -174,7 +180,9 @@ const getFastCastWebsocketInfo = async (licensePlateData: RegisterDisneyLicenseP
     const fastCastApi = axiosRestyped.create<FastCastHostApi>({
       baseURL: licensePlateData.fastCastHost
     });
-    const infoResponse = await timeXhrGet(fastCastApi, "/public/websockethost");
+    const infoResponse = await timeXhrRequest(fastCastApi, {
+      url: "/public/websockethost",
+    });
     return infoResponse.data;
   }
   catch (e: any) {
@@ -188,12 +196,12 @@ const getFastCastWebsocketInfo = async (licensePlateData: RegisterDisneyLicenseP
 
 const refreshRegisterDisney = async (deviceActivation: RegisterDisneyActivatedLicensePlateData): Promise<RegisterDisneyRefreshedLicensePlateData> => {
   try {
-    const refreshAuthResponse = await timeXhrPost(
-      registerDisneyApi,
-      "/ESPN-OTT.GC.ANDTV-PROD/guest/refresh-auth",
-      {
+    const refreshAuthResponse = await timeXhrRequestPost(registerDisneyApi, {
+      url: "/ESPN-OTT.GC.ANDTV-PROD/guest/refresh-auth",
+      data: {
         refreshToken: deviceActivation.refresh_token,
-      });
+      },
+    });
 
     return refreshAuthResponse.data;
   }

@@ -259,3 +259,11 @@ export const timeXhrRequest = async <TAPI extends RestypedBase, TPath extends Ex
   if (enableLogTimings) console.log('endRequest', config.url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
   return result;
 }
+
+export const timeXhrRequestPost = async <TAPI extends RestypedBase, TPath extends Extract<keyof TAPI, string>>(
+  axiosInstance: TypedAxiosInstance<TAPI>,
+  config: TypedAxiosRequestConfig<TAPI, TPath, "POST">
+): Promise<TypedAxiosResponse<TAPI, TPath, "POST">> => {
+  config.method = "POST";
+  return timeXhrRequest<TAPI, TPath, "POST">(axiosInstance, config);
+}

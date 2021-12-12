@@ -183,7 +183,7 @@ export const getNhltvGameList = async (
 
   fs.writeFileSync(gamesFile, JSON.stringify(dates, null, 2));
   if (dates.length < 1) {
-    throw new Error("No dates returned for schedule");
+    return [];
   }
 
   // we only asked for one date so only look at the first one

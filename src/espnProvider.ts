@@ -23,7 +23,7 @@ import {
 } from "./espnWatchApi";
 import {
   Config,
-  getProcessedStreams,
+  getHlsProcessedStreams,
   OffsetObject,
   ProcessedFeed,
   ProcessedFeedInfo,
@@ -63,6 +63,7 @@ interface AiringAndEventInfo {
 
 abstract class EspnProviderFeed implements ProviderFeed {
   providerName: string = "WatchESPN";
+  drmProtected: boolean = false;
   processedFeed: ProcessedFeed;
 
   constructor(isArchiveTvStream: boolean, isLiveTvStream: boolean, info: ProcessedFeedInfo) {
@@ -525,7 +526,7 @@ const getEspnStreamList = async (
 
   const masterUrl: string = scenarioData.stream.complete || scenarioData.stream.slide;
 
-  const streams = await getProcessedStreams(masterUrl);
+  const streams = await getHlsProcessedStreams(masterUrl);
   streamList.streams = streams.map(s => {
     return new EspnStream(s, mediaAuth);
   });

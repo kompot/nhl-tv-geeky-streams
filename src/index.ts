@@ -16,6 +16,9 @@ import {
   setLogTimings,
 } from './geekyStreamsApi';
 import {
+  getBallyGameList,
+} from "./ballyProvider";
+import {
   getEspnGameList,
 } from "./espnProvider";
 import {
@@ -158,14 +161,16 @@ const getGameList = async (
 ): Promise<ProcessedGameList> => {
   const nhltvGamesPromise = getNhltvGameList(config, date);
   const espnGamesPromise = getEspnGameList(config, date);
+  const ballyGamesPromise = config.enableExperimentalProviders ? getBallyGameList(config, date) : null;
   const nhltvGames = await nhltvGamesPromise;
   const espnGames = await espnGamesPromise;
+  const ballyGames = await ballyGamesPromise ?? [];
   
   const gamesById = new Map<string, ProviderGame[]>();
   const games: ProcessedGame[] = [];
   const hiddenGames: ProcessedGame[] = [];
   
-  [...nhltvGames, ...espnGames].forEach(providerGame => {
+  [...nhltvGames, ...espnGames, ...ballyGames].forEach(providerGame => {
     const key = getGameId(providerGame.getGameDateTime(), providerGame.getAwayTeam(), providerGame.getHomeTeam());
 
     let collection = gamesById.get(key);

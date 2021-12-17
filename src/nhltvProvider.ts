@@ -12,7 +12,7 @@ import {
 } from "./download";
 import {
   Config,
-  getProcessedStreams,
+  getHlsProcessedStreams,
   OffsetObject,
   ProcessedFeed,
   ProcessedStream,
@@ -56,6 +56,7 @@ const statsApi = axiosRestyped.create<NhlStatsApi>({
 
 class NhltvFeed implements ProviderFeed {
   providerName: string = "NHL.TV";
+  drmProtected: boolean = false;
   epgItem: EpgItem;
 
   constructor(epgItem: EpgItem) {
@@ -254,7 +255,7 @@ const getNhltvStreamList = async (
     mediaStream.user_verified_event[0].user_verified_content[0]
       .user_verified_media_item[0].url;
 
-  const streams = await getProcessedStreams(masterUrl);
+  const streams = await getHlsProcessedStreams(masterUrl);
   streamList.streams = streams.map(s => {
     return new NhltvStream(s, auth, mediaAuthAttribute.attributeValue);
   });

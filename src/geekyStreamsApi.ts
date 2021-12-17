@@ -21,6 +21,7 @@ export interface Config {
   preferredProvider?: string;
   preferredStreamQuality?: string;
   enableLogTimings?: boolean;
+  enableExperimentalProviders?: boolean;
 }
 
 export interface OffsetObject {
@@ -56,6 +57,7 @@ export interface ProcessedFeedList {
 
 export interface ProviderFeed {
   providerName: string;
+  drmProtected: boolean;
   getFeed(): ProcessedFeed;
   getStreamList(config: Config, passive: boolean): Promise<ProviderStreamList>;
 }
@@ -185,7 +187,11 @@ const processStream = (
   };
 };
 
-export const getProcessedStreams = async (
+export const getDashProcessedStreams = async (masterUrl: string): Promise<ProcessedStream[]> => {
+  throw new Error("Not implemented");
+}
+
+export const getHlsProcessedStreams = async (
   masterUrl: string
 ): Promise<ProcessedStream[]> => {
   const masterPlaylistContent = await timeXhrFetch(masterUrl);

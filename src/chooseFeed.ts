@@ -54,11 +54,16 @@ const renderFeed = (game: ProcessedGame, feed: ProcessedFeed): RenderedFeed => {
   const isForFavouriteTeam = feed.info.mediaFeedType === MediaFeedType.National && game.hasFavouriteTeam ||
                              feed.info.mediaFeedType === MediaFeedType.Away && game.isAwayTeamFavourite ||
                              feed.info.mediaFeedType === MediaFeedType.Home && game.isHomeTeamFavourite;
-  const isAvailable = feed.isArchiveTvStream || feed.isLiveTvStream; 
+  let disabledReason: string | undefined;
+  if (!feed.isArchiveTvStream && !feed.isLiveTvStream) {
+    disabledReason = "not available";
+  } else if (feed.providerFeed.drmProtected) {
+    disabledReason = "DRM protected";
+  }
 
   return {
-    displayName: renderFeedName(feed, isAvailable, isForFavouriteTeam),
-    disabledReason: !isAvailable ? "not available" : undefined,
+    displayName: renderFeedName(feed, !disabledReason, isForFavouriteTeam),
+    disabledReason: disabledReason,
     isForFavouriteTeam,
     processedFeed: feed,
   };
@@ -100,6 +105,8 @@ export const chooseFeed = (
       case "espn":
         preferredProviderName = "WatchESPN";
         break;
+      case "bally":
+        preferredProviderName = "BallyRSN";
       default:
         preferredProviderName = config.preferredProvider;
         break;

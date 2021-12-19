@@ -2,11 +2,18 @@
 # https://en.wikipedia.org/wiki/YAML#Basic_components
 
 # specify your NHL.TV account email
-# email: johndoe@gmail.com
-email:
+# emailNhltv: johndoe@gmail.com
+emailNhltv:
 # and password
-# password: johnDoesNhlTvPassword
-password:
+# passwordNhltv: johnDoesNhlTvPassword
+passwordNhltv:
+
+# specify your NHL LIVE email
+# emailNhlLive: johndoe@gmail.com
+emailNhlLive:
+# and password
+# passwordNhlLive: johnDoesNhlLivePassword
+passwordNhlLive:
 
 # this timezone is used to determine `today`, point in time from where to start
 # showing matches; should probably leave this as is
@@ -39,7 +46,7 @@ hideOtherTeams: false
 #preferredStreamQuality: best
 
 # preferred provider
-# 'nhltv' or 'espn'
+# 'nhltv', 'nhllive', or 'espn'
 # preferredProvider: nhltv
 
 

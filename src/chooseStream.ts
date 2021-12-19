@@ -83,10 +83,11 @@ export const chooseStream = async (
   preferredQuality: string | undefined,
   streamList: ProviderStreamList
 ): Promise<StreamSelection> => {
-  if (streamList.isBlackedOut) {
+  if (streamList.isBlackedOut || streamList.isUnauthorized) {
     console.log(
       chalk.yellow(
-        "This game is blacked out in your region. Try using VPN or select another game."
+        streamList.isBlackedOut ? "This game is blacked out in your region. Try using VPN or select another game."
+        : "This game is not available with your subscription."
       )
     );
 

@@ -6,6 +6,20 @@ enum TokenType {
   Bearer = "Bearer"
 }
 
+export interface NhlActivationRogersApi {
+  "/ws/subscription/flow/rogers.login": {
+    POST: {
+      body: {
+        rogerCredentials: {
+          email: string;
+          password: string;
+        };
+      };
+      response: {};
+    };
+  }
+}
+
 export interface NhlUserApi {
   "/v2/user/identity": {
     POST: {

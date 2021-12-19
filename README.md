@@ -3,6 +3,7 @@ or Linux. An active account to at least one provider **is required**. You should
 
 Currently supported providers:
 * NHL.TV
+* NHL LIVE
 * WatchESPN
 
 Blackouts are not worked around in any way. `This game is blacked out in your region. Try using VPN or select another game.` message will be displayed in that case.
@@ -15,7 +16,7 @@ Blackouts are not worked around in any way. `This game is blacked out in your re
 
 Copy `config.yaml` to `src/config.yaml.local`.
 
-If using NHL.TV, edit `src/config.yaml.local` to set email and password (these are not stored anywhere else and used _only_ to login to NHL.TV). Explore other options available.
+If using NHL.TV or NHL LIVE, edit `src/config.yaml.local` to set email and password (these are not stored anywhere else and used _only_ to login). Explore other options available.
 
 If using WatchESPN, you will need to periodically need to go to https://espn.com/activate and enter the code provided from this app.
 

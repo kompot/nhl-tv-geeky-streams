@@ -25,6 +25,7 @@ import {
   timeXhrRequest,
 } from "./geekyStreamsApi";
 import {
+  AUTH_STATUS,
   BLACKOUT_STATUS,
   CDN,
   FORMAT,
@@ -54,12 +55,13 @@ const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
 });
 
-class NhltvFeed implements ProviderFeed {
-  providerName: string = "NHL.TV";
+abstract class NhlFeedBase implements ProviderFeed {
+  providerName: string;
   drmProtected: boolean = false;
   epgItem: EpgItem;
 
-  constructor(epgItem: EpgItem) {
+  constructor(epgItem: EpgItem, providerName: string) {
+    this.providerName = providerName;
     this.epgItem = epgItem;
   }
 
@@ -76,14 +78,32 @@ class NhltvFeed implements ProviderFeed {
     };
   }
 
+  abstract getStreamList(config: Config): Promise<ProviderStreamList>;
+}
+
+class NhltvFeed extends NhlFeedBase {
+  constructor(epgItem: EpgItem) {
+    super(epgItem, "NHL.TV");
+  }
+
   getStreamList(config: Config): Promise<ProviderStreamList> {
     return getNhltvStreamList(config, this.epgItem);
   }
 }
 
+class NhlLiveFeed extends NhlFeedBase {
+  constructor(epgItem: EpgItem) {
+    super(epgItem, "NHL LIVE");
+  }
+
+  getStreamList(config: Config): Promise<ProviderStreamList> {
+    return getNhlLiveStreamList(config, this.epgItem);
+  }
+}
+
 class NhltvGame implements ProviderGame {
   awayTeam: ProviderTeam;
-  feeds: NhltvFeed[];
+  feeds: NhlFeedBase[];
   game: Game;
   gameDateTime: luxon.DateTime;
   homeTeam: ProviderTeam;
@@ -92,10 +112,14 @@ class NhltvGame implements ProviderGame {
     this.feeds = [];
     this.game = game;
 
+    const nhltvFeeds: NhlFeedBase[] = [];
+    const nhlLiveFeeds: NhlFeedBase[] = [];
     const nhltvEpg = this.game.content.media?.epg.find(e => e.title === EpgTitle.NHLTV);
     nhltvEpg?.items.forEach(epgItem => {
-      this.feeds.push(new NhltvFeed(epgItem));
+      nhltvFeeds.push(new NhltvFeed(epgItem));
+      nhlLiveFeeds.push(new NhlLiveFeed(epgItem));
     });
+    this.feeds = [...nhltvFeeds, ...nhlLiveFeeds];
 
     this.awayTeam = getProviderTeam(this.game.teams.away.team);
     this.homeTeam = getProviderTeam(this.game.teams.home.team);
@@ -202,9 +226,10 @@ const getNhltvStreamList = async (
     isBlackedOut: false,
     streams: [],
   };
+
   let auth: AuthSession;
   try {
-    auth = await getAuthSession(config.email, config.password, epgItem.eventId);
+    auth = await getAuthSession(true, config.emailNhltv, config.passwordNhltv, epgItem.eventId);
   } catch (e) {
     if (e instanceof Error) {
       streamList.unknownError = e.message;   
@@ -214,6 +239,42 @@ const getNhltvStreamList = async (
     throw e;
   }
 
+  return await getNhlStreamList(auth, epgItem);
+};
+
+const getNhlLiveStreamList = async (
+  config: Config,
+  epgItem: EpgItem
+): Promise<ProviderStreamList> => {
+  const streamList: ProviderStreamList = {
+    isBlackedOut: false,
+    streams: [],
+  };
+
+  let auth: AuthSession;
+  try {
+    auth = await getAuthSession(false, config.emailNhlLive, config.passwordNhlLive, epgItem.eventId);
+  } catch (e) {
+    if (e instanceof Error) {
+      streamList.unknownError = e.message;   
+      return streamList;   
+    }
+    
+    throw e;
+  }
+
+  return await getNhlStreamList(auth, epgItem);
+};
+
+const getNhlStreamList = async (
+  auth: AuthSession,
+  epgItem: EpgItem
+): Promise<ProviderStreamList> => {
+  const streamList: ProviderStreamList = {
+    isBlackedOut: false,
+    isUnauthorized: false,
+    streams: [],
+  };
   const r1 = await timeXhrRequest(mfApi, {
     url: "/ws/media/mf/v2.4/stream",
     params: {
@@ -233,13 +294,13 @@ const getNhltvStreamList = async (
   //   "_____ r1",
   //   JSON.stringify(mediaStream, null, 2)
   // );
+  const userVerifiedMediaItem = mediaStream.user_verified_event[0].user_verified_content[0].user_verified_media_item[0];
 
-  if (
-    mediaStream.user_verified_event[0].user_verified_content[0]
-      .user_verified_media_item[0].blackout_status.status ===
-    BLACKOUT_STATUS.BLACKED_OUT
-  ) {
+  if (userVerifiedMediaItem.blackout_status.status === BLACKOUT_STATUS.BLACKED_OUT) {
     streamList.isBlackedOut = true;
+    return streamList;
+  } else if (userVerifiedMediaItem.auth_status === AUTH_STATUS.NOT_AUTHORIZED) {
+    streamList.isUnauthorized = true;
     return streamList;
   }
 
@@ -251,9 +312,7 @@ const getNhltvStreamList = async (
     throw new Error("Missing auth attribute.");
   }
 
-  const masterUrl =
-    mediaStream.user_verified_event[0].user_verified_content[0]
-      .user_verified_media_item[0].url;
+  const masterUrl = userVerifiedMediaItem.url;
 
   const streams = await getHlsProcessedStreams(masterUrl);
   streamList.streams = streams.map(s => {

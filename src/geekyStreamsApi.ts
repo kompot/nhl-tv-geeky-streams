@@ -11,8 +11,10 @@ import {
 } from "./nhlStatsApi";
 
 export interface Config {
-  email: string;
-  password: string;
+  emailNhltv: string;
+  passwordNhltv: string;
+  emailNhlLive: string;
+  passwordNhlLive: string;
   matchTimeZone: string;
   playLiveGamesFromStart?: boolean;
   favouriteTeams?: string[];
@@ -93,6 +95,7 @@ export interface ProviderStream {
 
 export interface ProviderStreamList {
   isBlackedOut: boolean;
+  isUnauthorized?: boolean;
   streams: ProviderStream[];
   unknownError?: string;
 }

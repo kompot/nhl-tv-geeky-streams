@@ -8,7 +8,12 @@ export enum FORMAT {
   JSON = "json"
 }
 
-enum AUTH_STATUS {
+export enum SUBJECT {
+  NHLLIVE = "LIVE_EVENT_COVERAGE",
+  NHLTV = "NHLTV",
+}
+
+export enum AUTH_STATUS {
   SUCCESS = "SuccessStatus",
   LOGIN_REQUIRED = "LoginRequiredStatus",
   NOT_AUTHORIZED = "NotAuthorizedStatus"
@@ -108,7 +113,7 @@ export interface NhlMfApi {
         | {
             eventId: string;
             format: FORMAT;
-            subject: EpgTitle;
+            subject: SUBJECT;
           };
       response: Response.Playlist | Response.SessionKey;
     };

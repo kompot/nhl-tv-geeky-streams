@@ -210,7 +210,7 @@ export interface EspnWatchGraphqlAiring {
   source: EspnWatchGraphqlAiringSource;
   packages: EspnWatchGraphqlAiringPackage[];
   category: EspnWatchGraphqlAiringCategory;
-  subcategory: EspnWatchGraphqlAiringSubcategory;
+  subcategory: EspnWatchGraphqlAiringSubcategory | null;
   sport: EspnWatchGraphqlAiringSport;
   league: EspnWatchGraphqlAiringLeague;
   program: EspnWatchGraphqlAiringProgram;

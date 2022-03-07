@@ -415,10 +415,10 @@ const getEspnScheduleForDate = async (
       if (!airingList) return;
 
       airingList.forEach(airing => {
-        if (airingById.has(airing.id)) return;
+        if (!airing || airingById.has(airing.id)) return;
         airingById.set(airing.id, null);
 
-        if (airing.subcategory.id !== "1a5f0227-a13e-396c-8cea-8961bc288666" || // only want NHL
+        if (!airing.subcategory || airing.subcategory.id !== "1a5f0227-a13e-396c-8cea-8961bc288666" || // only want NHL
             airing.shortDate !== expectedShortDate || // nationally televised games are returned on the wrong day
             airing.type !== "UPCOMING" && !airing.source.url // url-less feeds are useless except when the game hasn't started
         ) {

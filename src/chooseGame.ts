@@ -235,7 +235,7 @@ const chooseGameInteractively = async (
       type: "list",
       // number of teams divided by 2 (16), maximum match number for 1 day
       // plus 6 lines for go back/forward buttons and separators
-      pageSize: 21,
+      pageSize: 22,
       name: questionNameGame,
       message: "Choose game to download",
       choices: gamesOptions

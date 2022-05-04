@@ -95,7 +95,7 @@ class EspnFeed extends EspnProviderFeed {
         mediaFeedType = MediaFeedType.Home;
       } else if (airing.feedName.indexOf("National") !== -1 || airing.feedName.indexOf("English") !== -1) {
         mediaFeedType = MediaFeedType.National;
-      } else if (airing.feedName.indexOf("Spanish") !== -1 || airing.feedName.indexOf("(SPA)")) {
+      } else if (airing.feedName.indexOf("Spanish") !== -1 || airing.feedName.indexOf("(SPA)") !== -1) {
         mediaFeedType = MediaFeedType.Spanish;
       }
     } else if (eventInfo && eventInfo.page.contents.streams.length) {
@@ -206,7 +206,7 @@ class EspnGame implements ProviderGame {
   }
 }
 
-class EspnStream implements ProviderStream {
+class EspnBamStream implements ProviderStream {
   bamAccessToken: string;
   stream: ProcessedStream;
 
@@ -222,6 +222,35 @@ class EspnStream implements ProviderStream {
     const streamlinkAuthOptions = [
       `--http-header`,
       "Authorization=" + this.bamAccessToken,
+    ];
+    return download(filename, offset, this.stream.downloadUrl, streamlinkAuthOptions, streamlinkExtraOptions);
+  }
+
+  getStream(): ProcessedStream {
+    return this.stream;
+  }
+}
+
+class EspnMvpdStream implements ProviderStream {
+  mvpdSessionToken: string;
+  stream: ProcessedStream;
+
+  constructor(
+    stream: ProcessedStream,
+    mvpdSessionToken: string,
+  ) {
+    this.mvpdSessionToken = mvpdSessionToken;
+    this.stream = stream;
+  }
+
+  download(filename: string, offset: OffsetObject, streamlinkExtraOptions: string[] | undefined): void {
+    const streamlinkAuthOptions = [
+      '--http-header',
+      'Connection=keep-alive',
+      '--http-header',
+      'User-Agent=Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36',
+      '--http-cookie',
+      `_mediaAuth=${this.mvpdSessionToken}`,
     ];
     return download(filename, offset, this.stream.downloadUrl, streamlinkAuthOptions, streamlinkExtraOptions);
   }
@@ -456,15 +485,29 @@ const getEspnScheduleForDate = async (
   }
 };
 
-const getEspnStreamList = async (
+const getEspnStreamList = (
   config: Config,
   passive: boolean,
   airing: EspnWatchGraphqlAiring
 ): Promise<ProviderStreamList> => {
-  if (airing.source.authorizationType !== "BAM") {
-    throw new Error("Unsupported WatchESPN authorization type: " + airing.source.authorizationType);
+  switch (airing.source.authorizationType) {
+    case "BAM": {
+      return getBamStreamList(config, passive, airing);
+    }
+    case "START_SESSION": {
+      return getMvpdStreamList(config, passive, airing);
+    }
+    default: {
+      throw new Error("Unsupported WatchESPN authorization type: " + airing.source.authorizationType);
+    }
   }
+};
 
+const getBamStreamList = async (
+  config: Config,
+  passive: boolean,
+  airing: EspnWatchGraphqlAiring
+): Promise<ProviderStreamList> => {
   const streamList: ProviderStreamList = {
     isBlackedOut: false,
     streams: [],
@@ -476,8 +519,8 @@ const getEspnStreamList = async (
     mediaAuth = await authSession.requestBamAccessToken(!passive);
   } catch (e) {
     if (e instanceof Error) {
-      streamList.unknownError = e.message;   
-      return streamList;   
+      streamList.unknownError = e.message;
+      return streamList;
     }
     
     throw e;
@@ -528,7 +571,71 @@ const getEspnStreamList = async (
 
   const streams = await getHlsProcessedStreams(masterUrl);
   streamList.streams = streams.map(s => {
-    return new EspnStream(s, mediaAuth);
+    return new EspnBamStream(s, mediaAuth);
+  });
+
+  return streamList;
+};
+
+const getMvpdStreamList = async (
+  config: Config,
+  passive: boolean,
+  airing: EspnWatchGraphqlAiring
+): Promise<ProviderStreamList> => {
+  const streamList: ProviderStreamList = {
+    isBlackedOut: false,
+    streams: [],
+  };
+  const authSession = createEspnAuthSession();
+  let mediaAuth: string;
+
+  try {
+    mediaAuth = await authSession.requestMvpdAccessToken(!passive, airing.adobeRSS);
+  } catch (e) {
+    if (e instanceof Error) {
+      streamList.unknownError = e.message;   
+      return streamList;
+    }
+    
+    throw e;
+  }
+  
+  let scenarioData: any;
+  try {
+    const scenarioResponse = await timeXhrFetch(airing.source.url, {
+      params: {
+        partner: 'watchespn',
+        playbackScenario: 'HTTP_CLOUD_HIGH',
+        platform: 'chromecast_uplynk',
+        token: mediaAuth,
+        tokenType: 'ADOBEPASS',
+        resource: Buffer.from(airing.adobeRSS).toString('base64'),
+        v: '2.0.0',
+      },
+    });
+    scenarioData = scenarioResponse.data;
+  } catch (e: any) {
+    if (e?.response && e.response.status === 403) {
+      scenarioData = e.response.data;
+    } else {
+      if (e?.response?.data) {
+        console.log(e.response.data);
+      }
+      throw e;
+    }
+  }
+
+  if (scenarioData.status !== 'success') {
+    console.log(scenarioData);
+    throw new Error(scenarioData.message);
+  }
+
+  const masterUrl: string = scenarioData.session.playbackUrls.default;
+  const sessionToken: string = scenarioData.session.token;
+
+  const streams = await getHlsProcessedStreams(masterUrl);
+  streamList.streams = streams.map(s => {
+    return new EspnMvpdStream(s, sessionToken);
   });
 
   return streamList;

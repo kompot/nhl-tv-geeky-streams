@@ -167,6 +167,7 @@ const chooseFeedInteractively = async (
   const questionsFeed: inquirer.ListQuestion[] = [
     {
       type: "list",
+      pageSize: 22,
       name: questionNameFeed,
       message: "Choose feed to watch",
       choices: feedOptions

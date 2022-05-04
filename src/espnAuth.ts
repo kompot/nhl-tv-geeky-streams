@@ -1,4 +1,6 @@
+import { createHmac, randomUUID } from "crypto";
 import * as fs from "fs";
+import * as inquirer from "inquirer";
 import * as luxon from "luxon";
 import * as querystring from "querystring";
 import axiosRestyped from "restyped-axios";
@@ -36,6 +38,7 @@ const registerDisneyApi = axiosRestyped.create<RegisterDisneyApi>({
 
 export interface IEspnAuthenticationSession {
   requestBamAccessToken(allowInteraction: boolean): Promise<string>;
+  requestMvpdAccessToken(allowInteraction: boolean, resourceId: string): Promise<string>;
 }
 
 interface EspnPlusAuthenticationSessionData {
@@ -72,7 +75,33 @@ interface FastCastWebsocketHostInfo {
   securePort: number;
 };
 
-const sessionFile = "./tmp/session.espn.json";
+interface MvpdResourceMediaToken {
+  mvpdId: string;
+  expires: string;
+  serializedToken: string;
+  userId: string;
+  requestor: string;
+  resource: string;
+};
+
+interface MvpdResourceAuthorization {
+  resource: string;
+  mvpd: string;
+  requestor: string;
+  expires: string;
+  mediaToken: MvpdResourceMediaToken | undefined;
+};
+
+interface EspnMvpdAuthenticationSessionData {
+  deviceId: string;
+  regcode: EspnMvpdRegcodeData | null;
+  activatedRegcode: EspnMvpdActivatedRegcodeData | null;
+  regcodeActivationGrantTime: number;
+  resourceAuthorizations: { [key: string]: MvpdResourceAuthorization | undefined };
+};
+
+const plusSessionFile = "./tmp/session.espn.json";
+const mvpdSessionFile = "./tmp/session.espnmvpd.json";
 
 const getRegisterDisneyApiKey = async (): Promise<RegisterDisneyApiKeyData> => {  
   try {
@@ -332,15 +361,21 @@ const createAccountTokenExchange = async (bamSdkConfig: BamSdkConfigData, accoun
 };
 
 export const createEspnAuthSession = (): IEspnAuthenticationSession => {
-  let prevSessionData: string | undefined;
+  let prevMvpdSessionData: string | undefined;
+  let prevPlusSessionData: string | undefined;
 
   try {
-    prevSessionData = fs.readFileSync(sessionFile).toString();
+    prevMvpdSessionData = fs.readFileSync(mvpdSessionFile).toString();
   } catch {}
 
-  const authSession: EspnPlusAuthenticationSessionData | null = prevSessionData ? JSON.parse(prevSessionData) : null;
+  try {
+    prevPlusSessionData = fs.readFileSync(plusSessionFile).toString();
+  } catch {}
 
-  return new EspnAuthenticationSession(authSession);
+  const mvpdAuthSession: EspnMvpdAuthenticationSessionData | null = prevMvpdSessionData ? JSON.parse(prevMvpdSessionData) : null;
+  const plusAuthSession: EspnPlusAuthenticationSessionData | null = prevPlusSessionData ? JSON.parse(prevPlusSessionData) : null;
+
+  return new EspnAuthenticationSession(mvpdAuthSession, plusAuthSession);
 };
 
 const parseJwt = (token: string): any => {
@@ -356,12 +391,34 @@ const parseJwt = (token: string): any => {
   return JSON.parse(jsonPayload);
 };
 
+const getTtl = (expirationTime: number): number => {
+  return luxon.DateTime.fromMillis(expirationTime)
+                       .diff(luxon.DateTime.local())
+                       .as('seconds');
+};
+
 const getRemainingTtl = (grantTime: number, ttl: number): number => {
   const elapsed = luxon.DateTime.local()
                                 .diff(luxon.DateTime.fromMillis(grantTime))
                                 .as("seconds");
   return ttl - elapsed;
 }
+
+const isMvpdResourceAuthorizationExpired = (authorization: MvpdResourceAuthorization | undefined) => {
+  try {
+    return !!authorization && getTtl(Number(authorization.expires)) < 0;
+  } catch {
+    return true;
+  }
+};
+
+const isMvpdMediaTokenExpired = (mediaToken: MvpdResourceMediaToken | undefined) => {
+  try {
+    return !!mediaToken && getTtl(Number(mediaToken.expires)) < 0;
+  } catch {
+    return true;
+  }
+};
 
 class EspnPlusAuthenticationToken {
   private readonly jwtPayload: any;
@@ -508,7 +565,7 @@ class EspnPlusAuthenticationSession {
 
   persistSessionData() {
     const serializedData = JSON.stringify(this.sessionData, null, 2);
-    fs.writeFileSync(sessionFile, serializedData);
+    fs.writeFileSync(plusSessionFile, serializedData);
 
     this.loadTokens();
   }
@@ -551,11 +608,13 @@ class EspnPlusAuthenticationSession {
 }
 
 class EspnAuthenticationSession implements IEspnAuthenticationSession {
+  private readonly espnMvpdSession: EspnMvpdAuthenticationSession;
   private readonly espnPlusSession: EspnPlusAuthenticationSession;
   private bamSdkConfig: BamSdkConfigData | undefined;
 
-  constructor(sessionData: EspnPlusAuthenticationSessionData | null) {
-    this.espnPlusSession = new EspnPlusAuthenticationSession(sessionData);
+  constructor(mvpdSessionData: EspnMvpdAuthenticationSessionData | null, plusSessionData: EspnPlusAuthenticationSessionData | null) {
+    this.espnMvpdSession = new EspnMvpdAuthenticationSession(mvpdSessionData);
+    this.espnPlusSession = new EspnPlusAuthenticationSession(plusSessionData);
   }
 
   async registerWithEspnPlus(): Promise<boolean> {
@@ -584,7 +643,7 @@ class EspnAuthenticationSession implements IEspnAuthenticationSession {
       throw new Error('ESPN+ authentication required');
     }
 
-    return this.ensureBamAccountToken();
+    return await this.ensureBamAccountToken();
   }
 
   async requestBamAccessToken(allowInteraction: boolean): Promise<string> {
@@ -760,4 +819,294 @@ class EspnAuthenticationSession implements IEspnAuthenticationSession {
   hasValidDisneyRefreshToken(): boolean {
     return this.espnPlusSession.isRefreshTokenValid();
   }
+
+  async requestMvpdAccessToken(allowInteraction: boolean, resourceId: string): Promise<string> {
+    if (!(await this.ensureMvpdAuthentication(allowInteraction))) {
+      throw new Error('Failed to authenticate to ESPN mvpd');
+    }
+
+    let resourceAuthorization = this.espnMvpdSession.sessionData.resourceAuthorizations[resourceId];
+    if (!resourceAuthorization || isMvpdResourceAuthorizationExpired(resourceAuthorization)) {
+      resourceAuthorization = await authorizeEspnMvpdResource(this.espnMvpdSession.sessionData.deviceId, resourceId);
+      this.espnMvpdSession.addResourceAuthorization(resourceId, resourceAuthorization);
+    }
+
+    let mediaToken = resourceAuthorization.mediaToken;
+    if (!mediaToken || isMvpdMediaTokenExpired(mediaToken)) {
+      mediaToken = await getEspnMvpdMediaToken(this.espnMvpdSession.sessionData.deviceId, resourceId);
+      resourceAuthorization.mediaToken = mediaToken;
+      this.espnMvpdSession.persistSessionData();
+    }
+
+    return mediaToken.serializedToken;
+  }
+
+  async ensureMvpdAuthentication(allowInteraction: boolean): Promise<boolean> {
+    if (this.espnMvpdSession.isActivatedRegcodeValid()) {
+      return true;
+    }
+
+    if (!allowInteraction) {
+      throw new Error('ESPN mvpd authentication required');
+    }
+
+    return await this.registerWithEspnMvpd();
+  }
+
+  async registerWithEspnMvpd(): Promise<boolean> {
+    try {
+      const regCodeData = await getEspnMvpdRegcode(this.espnMvpdSession.getDeviceId());
+      const activationData = await activateEspnMvpdRegcode(regCodeData);
+
+      this.espnMvpdSession.useNewActivation(regCodeData, activationData);
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
+
+class EspnMvpdAuthenticationSession {
+  readonly sessionData: EspnMvpdAuthenticationSessionData;
+
+  constructor(sessionData: EspnMvpdAuthenticationSessionData | null) {
+    this.sessionData = sessionData ?? {
+      deviceId: generateDeviceId(),
+      regcode: null,
+      activatedRegcode: null,
+      regcodeActivationGrantTime: -1,
+      resourceAuthorizations: {},
+    };
+
+    this.removeExpiredResourceAuthorizations();
+  }
+
+  getDeviceId(): string {
+    if (!this.sessionData!.deviceId) {
+      this.sessionData.deviceId = generateDeviceId();
+    }
+
+    return this.sessionData.deviceId;
+  }
+
+  useNewActivation(regcodeData: EspnMvpdRegcodeData, activationData: EspnMvpdActivatedRegcodeData) {
+    this.sessionData.regcode = regcodeData;
+    this.sessionData.activatedRegcode = activationData;
+    this.sessionData.regcodeActivationGrantTime = new Date().getTime();
+
+    this.persistSessionData();
+  }
+
+  addResourceAuthorization(resourceId: string, authorization: MvpdResourceAuthorization) {
+    this.sessionData.resourceAuthorizations[resourceId] = authorization;
+
+    this.removeExpiredResourceAuthorizations();
+  }
+
+  removeExpiredResourceAuthorizations() {
+    const expiredResourceIds: string[] = [];
+
+    for (const resourceId in this.sessionData.resourceAuthorizations) {
+      const resourceAuthorization = this.sessionData.resourceAuthorizations[resourceId];
+      if (isMvpdResourceAuthorizationExpired(resourceAuthorization)) {
+        expiredResourceIds.push(resourceId);
+      }
+    }
+
+    for (const resourceId of expiredResourceIds) {
+      this.sessionData.resourceAuthorizations[resourceId] = undefined;
+    }
+
+    this.persistSessionData();
+  }
+
+  persistSessionData() {
+    const serializedData = JSON.stringify(this.sessionData, null, 2);
+    fs.writeFileSync(mvpdSessionFile, serializedData);
+  }
+
+  isActivatedRegcodeValid(): boolean {
+    try {
+      return !!this.sessionData.activatedRegcode && getTtl(Number(this.sessionData.activatedRegcode.expires)) > 0;
+    } catch {
+      return false;
+    }
+  }
+}
+
+interface EspnMvpdRegcodeData {
+  id: string;
+  code: string;
+  requestor: string;
+  generated: number;
+  expires: number;
+  info: EspnMvpdRegcodeInfo;
+};
+
+interface EspnMvpdRegcodeInfo {
+  deviceId: string;
+  deviceType: string;
+  deviceInfo: string;
+  userAgent: string;
+  originalUserAgent: string;
+  normalizedDeviceType: string;
+  authorizationType: string;
+};
+
+interface EspnMvpdActivatedRegcodeData {
+  mvpd: string;
+  requestor: string;
+  userId: string;
+  expires: string;
+};
+
+const espnAdobeAuthApi = axiosRestyped.create({
+  baseURL: "https://api.auth.adobe.com",
+  headers: {
+    'Accept': 'application/json',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'en-us',
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'User-Agent': 'AppleCoreMedia/1.0.0.13Y234 (Apple TV; U; CPU OS 9_2 like Mac OS X; en_us)',
+  },
+});
+
+const generateDeviceId = (): string => {
+  return randomUUID();
+};
+
+const generateMvpdMessage = (method: string, path: string): string => {
+    const nonce = randomUUID();
+    const today = Math.round(luxon.DateTime.now().toMillis());
+    const messageToHash = `${method} requestor_id=ESPN, nonce=${nonce}, signature_method=HMAC-SHA1, request_time=${today}, request_uri=${path}`;
+    const hmac = createHmac('sha1', 'gB8HYdEPyezeYbR1');
+    hmac.update(messageToHash);
+    const signature = hmac.digest('base64');
+    return `${messageToHash}, public_key=yKpsHYd8TOITdTMJHmkJOVmgbb2DykNK, signature=${signature}`;
+};
+
+const sendAdobeAuthApiRequest = async <T>(
+  method: 'GET' | 'POST',
+  basePath: string,
+  operationPath: string,
+  params: any
+): Promise<T> => {
+  try {
+    let data: T;
+    const message = generateMvpdMessage(method, operationPath);
+    const url = basePath + operationPath;
+    const config = {
+      headers: {
+        Authorization: message,
+      },
+      params,
+    };
+
+    if (method === 'POST') {
+      const response = await timeXhrPost(espnAdobeAuthApi, url, {}, config);
+      data = response.data as T;
+    } else {
+      const response = await timeXhrGet(espnAdobeAuthApi, url, config);
+      data = response.data as T;
+    }
+
+    return data;
+  } catch (e: any) {
+    if (e?.response?.data?.error) {
+      console.error(e.response.data.error);
+    } else {
+      console.error(e);
+    }
+
+    throw e;
+  }
+}
+
+const getEspnMvpdRegcode = async (deviceId: string): Promise<EspnMvpdRegcodeData> => {
+  return await sendAdobeAuthApiRequest(
+    'POST',
+    '/reggie/v1/ESPN',
+    '/regcode',
+    {
+      deviceId,
+      deviceType: 'appletv',
+      ttl: '1800',
+    }
+  );
+};
+
+const activateEspnMvpdRegcode = async (regcodeData: EspnMvpdRegcodeData): Promise<EspnMvpdActivatedRegcodeData> => {
+  const continueValue = {
+    cancel: false,
+  };
+  const cancelValue = {
+    cancel: true,
+  };
+  let loginOptions: inquirer.DistinctChoice<inquirer.ListChoiceMap>[] = [
+    {
+      value: continueValue,
+      name: `Continue - login was successful`,
+    },
+    {
+      value: cancelValue,
+      name: `Cancel`,
+    },
+  ];
+
+  const questionNameLogin = "login";
+
+  const questionsLogin: inquirer.ListQuestion[] = [
+    {
+      type: "list",
+      name: questionNameLogin,
+      message: `In order to login, navigate to https://es.pn/appletv and enter the code '${regcodeData.code}'`,
+      choices: loginOptions,
+    },
+  ];
+
+  const answers = await inquirer.prompt(questionsLogin);
+  const answerLogin = answers[questionNameLogin];
+  if (answerLogin.cancel) {
+    throw new Error('Canceled while activating registration code for ESPN mvpd');
+  }
+
+  return await getActivatedEspnMvpdRegcode(regcodeData);
+};
+
+const getActivatedEspnMvpdRegcode = async (regcodeData: EspnMvpdRegcodeData): Promise<EspnMvpdActivatedRegcodeData> => {
+  return await sendAdobeAuthApiRequest(
+    'GET',
+    '/api/v1',
+    `/authenticate/${regcodeData.code}`,
+    {
+      requestor: 'ESPN',
+    }
+  );
+};
+
+const authorizeEspnMvpdResource = async (deviceId: string, resourceId: string): Promise<MvpdResourceAuthorization> => {
+  return await sendAdobeAuthApiRequest(
+    'GET',
+    '/api/v1',
+    `/authorize`,
+    {
+      requestor: 'ESPN',
+      deviceId,
+      resource: resourceId,
+    }
+  );
+};
+
+const getEspnMvpdMediaToken = async (deviceId: string, resourceId: string): Promise<MvpdResourceMediaToken> => {
+  return await sendAdobeAuthApiRequest(
+    'GET',
+    '/api/v1',
+    `/mediatoken`,
+    {
+      requestor: 'ESPN',
+      deviceId,
+      resource: resourceId,
+    }
+  );
+};

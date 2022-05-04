@@ -139,6 +139,7 @@ export const chooseStreamInteractively = async (
   const questionsStream: inquirer.ListQuestion[] = [
     {
       type: "list",
+      pageSize: 22,
       name: questionNameStream,
       message: "Choose stream quality",
       choices: streamOptions

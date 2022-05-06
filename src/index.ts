@@ -63,7 +63,7 @@ Requires a favourite team and preferred stream quality.`,
     }
   } catch { }
 
-  const config = yaml.load(fs.readFileSync("./src/config.yaml.local", "utf-8")) as Config;
+  const config = yaml.load(fs.readFileSync("./config.yaml", "utf-8")) as Config;
   // don't hide other teams if none are favourited
   const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.length);
   config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams ||

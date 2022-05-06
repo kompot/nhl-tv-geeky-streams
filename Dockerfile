@@ -1,4 +1,4 @@
-FROM node:16.13-alpine3.13
+FROM node:18.1-alpine3.15
 
 RUN apk --no-cache add \
     build-base \
@@ -8,7 +8,7 @@ RUN apk --no-cache add \
     libxslt-dev \
     cmd:pip3 \
     ffmpeg \
-  && pip3 install wheel streamlink==3.0.* \
+  && pip3 install wheel streamlink==4.0.* \
   && apk --no-cache del build-base
 
 WORKDIR /app/

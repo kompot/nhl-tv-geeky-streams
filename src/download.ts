@@ -63,6 +63,8 @@ export const download = (
           dataAsString.lastIndexOf(")") + 1
         )
       );
+    } else if (/^\s+$/.test(dataAsString)) {
+      // ignore
     } else {
       console.log(`\n${processName}`, dataAsString);
     }

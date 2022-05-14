@@ -7,8 +7,8 @@ RUN apk --no-cache add \
     libxml2-dev \
     libxslt-dev \
     cmd:pip3 \
-    ffmpeg \
-  && pip3 install wheel streamlink==4.0.*
+    ffmpeg
+RUN pip3 install wheel streamlink==4.0.*
 
 WORKDIR /app/
 COPY package.json /app/

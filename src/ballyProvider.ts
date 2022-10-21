@@ -23,6 +23,8 @@ import {
 import {
   Config,
   getDashProcessedStreams,
+  getProviderTeamFromAbbreviation,
+  idPathVariableInterceptor,
   OffsetObject,
   ProcessedFeed,
   ProcessedStream,
@@ -46,15 +48,6 @@ const ballyLiveApi = axiosRestyped.create<BallyLiveApi>({
   baseURL: "https://www.ballysports.deltatre.digital/api/v2/live",
 });
 
-const idPathVariableInterceptor = (config: AxiosRequestConfig): AxiosRequestConfig => {
-  if (config.params && config.url) {
-    config.url = config.url.replace("/:id", `/${config.params.id}`);
-    config.params.id = undefined;
-  }
-
-  return config;
-};
-
 const sportRadarWidgetApi = axiosRestyped.create<SportRadarWidgetApi>({
   baseURL: "https://uswidgets.fn.sportradar.com/sportradarmlb/en_us/Etc:UTC/gismo",
 });
@@ -74,9 +67,11 @@ class BallyFeed implements ProviderFeed {
 
   constructor(airing: BallyAiring, awayTeam: ProviderTeam, homeTeam: ProviderTeam) {
     let mediaFeedType: MediaFeedType = MediaFeedType.Unknown;
-    if (airing.listItem.customId.indexOf(awayTeam.nickname.toLowerCase().replace(" ", "-")) !== -1) {
+    const isAway = airing.listItem.customId.indexOf(awayTeam.nickname.toLowerCase().replace(" ", "-")) !== -1;
+    const isHome = airing.listItem.customId.indexOf(homeTeam.nickname.toLowerCase().replace(" ", "-")) !== -1;
+    if (isAway && !isHome) {
       mediaFeedType = MediaFeedType.Away;
-    } else if (airing.listItem.customId.indexOf(homeTeam.nickname.toLowerCase().replace(" ", "-")) !== -1) {
+    } else if (!isAway && isHome) {
       mediaFeedType = MediaFeedType.Home;
     }
 
@@ -193,11 +188,11 @@ const compareBallyFeeds = (x: BallyFeed, y: BallyFeed): number => {
 };
 
 const getProviderTeam = (team: SportRadarWidgetScoreboardMatchTeam): ProviderTeam => {
-  return {
-    abbreviation: team.abbr,
-    fullName: team.mediumname,
-    nickname: team.nickname,
-  };
+  const providerTeam = getProviderTeamFromAbbreviation(team.abbr);
+  if (!providerTeam) {
+    throw new Error(JSON.stringify(team));
+  }
+  return providerTeam;
 }
 
 export const getBallyGameList = async (
@@ -237,6 +232,7 @@ export const getBallyGameList = async (
 
   for (const airing of airings) {
     const listItem = airing.listItem;
+    let gameDateTime = airing.gameDateTime;
 
     if (true) {
       const scoreboardMatch = matches ? matches[listItem.customFields.SportsRadarId] : undefined;
@@ -255,12 +251,18 @@ export const getBallyGameList = async (
           nickname: listItem.title,
         };
       } else {
+        gameDateTime = luxon.DateTime.fromSeconds(scoreboardMatch._dt.uts);
         awayTeam = getProviderTeam(scoreboardMatch.teams.away);
         homeTeam = getProviderTeam(scoreboardMatch.teams.home);
       }
 
+      const shortDate = date.toISODate();
+      if (gameDateTime.setZone(config.matchTimeZone).toISODate() !== shortDate) {
+        continue;
+      }
+
       const feed = new BallyFeed(airing, awayTeam, homeTeam);
-      const game = new BallyGame(airing.gameDateTime, awayTeam, homeTeam, feed);
+      const game = new BallyGame(gameDateTime, awayTeam, homeTeam, feed);
       games.push(game);
     }
   }
@@ -324,7 +326,7 @@ const getBallyScheduleForDate = async (
       const gameDateTime = luxon.DateTime.fromISO(listItem.eventDate);
 
       if (
-        gameDateTime.setZone(config.matchTimeZone).toISODate() !== shortDate || // only want items from requested date
+        //gameDateTime.setZone(config.matchTimeZone).toISODate() !== shortDate || // only want items from requested date, but can't trust the date
         !listItem.categories.some(c => c === "league-nhl") || // only want NHL
         listItem.customFields.LiveCategory !== "event" // only want games
       ) { 

@@ -24,6 +24,7 @@ import {
 import {
   Config,
   getHlsProcessedStreams,
+  getProviderTeamFromAbbreviation,
   OffsetObject,
   ProcessedFeed,
   ProcessedFeedInfo,
@@ -303,11 +304,11 @@ const processGame = (
 };
 
 const getProviderTeam = (team: EspnSiteScoreboardDayCompetitorTeam): ProviderTeam => {
-  return {
-    abbreviation: team.abbreviation,
-    fullName: team.displayName,
-    nickname: team.name,
-  };
+  const providerTeam = getProviderTeamFromAbbreviation(team.abbreviation);
+  if (!providerTeam) {
+    throw new Error(JSON.stringify(team));
+  }
+  return providerTeam;
 }
 
 export const getEspnGameList = async (

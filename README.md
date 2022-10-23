@@ -3,8 +3,7 @@ or Linux. An active account to at least one provider **is required**. You should
 
 Currently supported providers:
 * NHL.TV
-* NHL LIVE
-* WatchESPN (ESPN+ and ESPN channels)
+* WatchESPN (US ESPN+ and ESPN channels)
 
 Blackouts are not worked around in any way. `This game is blacked out in your region. Try using VPN or select another game.` message will be displayed in that case.
 
@@ -14,7 +13,7 @@ Blackouts are not worked around in any way. `This game is blacked out in your re
 
 # Usage
 
-If using NHL.TV or NHL LIVE, edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login).
+If using NHL.TV, edit `config.yaml` to set email and password (these are not stored anywhere else and used _only_ to login).
 
 If using WatchESPN, the app will give you a code for ESPN+ feeds that you have to enter at https://espn.com/activate (every 6 months).
 For ESPN channels, the app will give you a code that you have to enter at https://es.pn/appletv (every 12 months).
@@ -46,5 +45,6 @@ Loosely based on
 * https://github.com/cmaxwe/dl-nhltv
 * https://github.com/t43pasdf/plugin.video.espn_3
 * https://gist.github.com/akeaswaran/b48b02f1c94f873c6655e7129910fc3b
+* https://github.com/emilsvennesson/kodi-viaplay
 
 Special credit to [StevensNJD4](https://github.com/StevensNJD4) and his awesome [LazyMan](https://github.com/StevensNJD4/LazyMan) app.

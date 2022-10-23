@@ -34,6 +34,7 @@ import { chooseStream } from "./chooseStream";
 import {
   calcRecordingOffset,
 } from "./calcRecordingOffset";
+import { getViaplayGameList } from "./viaplayProvider";
 
 interface CommandLineConfig {
   passive: boolean;
@@ -167,16 +168,18 @@ const getGameList = async (
   const nhltvCleengGamesPromise = getNhltvCleengGameList(config, date);
   const espnGamesPromise = getEspnGameList(config, date);
   const ballyGamesPromise = config.enableExperimentalProviders ? getBallyGameList(config, date) : null;
+  const viaplayGamesPromise = config.enableExperimentalProviders ? getViaplayGameList(config, date) : null;
   const nhltvGames = await nhltvGamesPromise;
   const nhltvCleengGames = await nhltvCleengGamesPromise;
   const espnGames = await espnGamesPromise;
   const ballyGames = await ballyGamesPromise ?? [];
+  const viaplayGames = await viaplayGamesPromise ?? [];
   
   const gamesById = new Map<string, ProviderGame[]>();
   const games: ProcessedGame[] = [];
   const hiddenGames: ProcessedGame[] = [];
   
-  [...nhltvGames, ...nhltvCleengGames, ...espnGames, ...ballyGames].forEach(providerGame => {
+  [...nhltvGames, ...nhltvCleengGames, ...espnGames, ...ballyGames, ...viaplayGames].forEach(providerGame => {
     const key = getGameId(providerGame.getGameDateTime(), providerGame.getAwayTeam(), providerGame.getHomeTeam());
 
     let collection = gamesById.get(key);

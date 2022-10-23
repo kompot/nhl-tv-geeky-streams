@@ -158,10 +158,11 @@ export const getNhltvCleengGameList = async (
   config: Config,
   date: luxon.DateTime
 ): Promise<ProviderGame[]> => {
-  const dateFormatString = "yyyy-MM-dd'T00:00:00'ZZ";
-  const dateFromString = date.toFormat(dateFormatString);
-  const dateToString = date.plus({ days: 1 }).toFormat(dateFormatString);
-  console.log(dateFromString, dateToString);
+  const dateFormatString = "yyyy-MM-dd";
+  const targetDate = date.setZone(config.matchTimeZone);
+  const dateStringEnding = targetDate.toFormat("'T12:00:00'ZZ");
+  const dateFromString = date.minus({ days: 1 }).toFormat(dateFormatString) + dateStringEnding;
+  const dateToString = date.plus({ days: 1 }).toFormat(dateFormatString) + dateStringEnding;
 
   const eventsResponse = await timeXhrRequest(nhltvCleengApi, {
     url: "/v2/events",
@@ -175,9 +176,14 @@ export const getNhltvCleengGameList = async (
   fs.writeFileSync(gamesFile, JSON.stringify(eventsResponse.data, null, 2));
   
   const games: ProviderGame[] = [];
+  const shortDate = date.toISODate();
   eventsResponse.data.data.forEach(game => {
     if (game.srMatchId) {
-      games.push(processGame(game));
+      const providerGame = processGame(game);
+
+      if (providerGame.getGameDateTime().setZone(config.matchTimeZone).toISODate() === shortDate) {
+        games.push(providerGame);
+      }
     }
   });
 

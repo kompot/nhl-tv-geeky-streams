@@ -229,6 +229,7 @@ export const getBallyGameList = async (
   }
 
   const games: BallyGame[] = [];
+  const shortDate = date.toISODate();
 
   for (const airing of airings) {
     const listItem = airing.listItem;
@@ -256,7 +257,6 @@ export const getBallyGameList = async (
         homeTeam = getProviderTeam(scoreboardMatch.teams.home);
       }
 
-      const shortDate = date.toISODate();
       if (gameDateTime.setZone(config.matchTimeZone).toISODate() !== shortDate) {
         continue;
       }

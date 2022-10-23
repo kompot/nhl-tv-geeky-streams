@@ -8,13 +8,6 @@ emailNhltv:
 # passwordNhltv: johnDoesNhlTvPassword
 passwordNhltv:
 
-# specify your NHL LIVE email
-# emailNhlLive: johndoe@gmail.com
-emailNhlLive:
-# and password
-# passwordNhlLive: johnDoesNhlLivePassword
-passwordNhlLive:
-
 # this timezone is used to determine `today`, point in time from where to start
 # showing matches; should probably leave this as is
 # if set to like, Tokyo, you will always see tomorrow's matches
@@ -59,3 +52,6 @@ hideOtherTeams: false
 # or first available if the only found game does not include one of
 # `favouriteTeams`
 startDownloadingIfSingleGameFound: true
+
+# specify viaplay country code
+#viaplayCountry: se

@@ -15,6 +15,7 @@ export interface Config {
   passwordNhltv: string;
   emailNhlLive: string;
   passwordNhlLive: string;
+  viaplayCountry?: string;
   matchTimeZone: string;
   playLiveGamesFromStart?: boolean;
   favouriteTeams?: string[];
@@ -525,6 +526,79 @@ export const getProviderTeamFromAbbreviation = (abbreviation: string): ProviderT
     case "VGK":
       return providerTeams[31];
     case "SEA":
+      return providerTeams[32];
+    default: return null;
+  }
+};
+
+export const getProviderTeamFromLocation = (location: string): ProviderTeam | null => {
+  switch (location) {
+    case "New Jersey":
+      return providerTeams[0];
+    case "NY Islanders":
+      return providerTeams[1];
+    case "NY Rangers":
+      return providerTeams[2];
+    case "Philadelphia":
+      return providerTeams[3];
+    case "Pittsburgh":
+      return providerTeams[4];
+    case "Boston":
+      return providerTeams[5];
+    case "Buffalo":
+      return providerTeams[6];
+    case "Montreal":
+      return providerTeams[7];
+    case "Ottawa":
+      return providerTeams[8];
+    case "Toronto":
+      return providerTeams[9];
+    case "Carolina":
+      return providerTeams[10];
+    case "Florida":
+      return providerTeams[11];
+    case "Tampa Bay":
+      return providerTeams[12];
+    case "Washington":
+      return providerTeams[13];
+    case "Chicago":
+      return providerTeams[14];
+    case "Detroit":
+      return providerTeams[15];
+    case "Nashville":
+      return providerTeams[16];
+    case "St Louis":
+    case "St. Louis":
+      return providerTeams[17];
+    case "Calgary":
+      return providerTeams[18];
+    case "Colorado":
+      return providerTeams[19];
+    case "Edmonton":
+      return providerTeams[20];
+    case "Vancouver":
+      return providerTeams[21];
+    case "Anaheim":
+      return providerTeams[22];
+    case "Dallas":
+      return providerTeams[23];
+    case "Los Angeles":
+      return providerTeams[24];
+    case "San Jose":
+      return providerTeams[25];
+    case "Columbus":
+      return providerTeams[26];
+    case "Minnesota":
+      return providerTeams[27];
+    case "Winnipeg":
+      return providerTeams[28];
+    case "Arizona":
+      return providerTeams[29];
+    case "Phoenix":
+      return providerTeams[30];
+    case "Vegas":
+      return providerTeams[31];
+    case "Seattle":
       return providerTeams[32];
     default: return null;
   }

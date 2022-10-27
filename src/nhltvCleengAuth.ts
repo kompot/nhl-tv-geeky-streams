@@ -60,11 +60,8 @@ class NhltvCleengAuthenticationSession implements INhltvCleengAuthenticationSess
         params: {
           id: feedId,
         },
-        data: {
-          type: "nhl",
-        },
         headers: {
-          Cookie: `token=${this.sessionData.token}`,
+          Authorization: this.sessionData.token,
         },
       });
 
@@ -98,12 +95,10 @@ class NhltvCleengAuthenticationSession implements INhltvCleengAuthenticationSess
 
     try {
       const loginResult = await timeXhrRequestPost(nhltvCleengApi, {
-        url: "/v3/sso/nhl/sign-in",
+        url: "/v3/sso/nhl/login",
         data: {
           email: this.config.emailNhltv,
           password: this.config.passwordNhltv,
-          code: null,
-          gCaptchaResponse: null,
         },
       });
       
@@ -120,8 +115,8 @@ class NhltvCleengAuthenticationSession implements INhltvCleengAuthenticationSess
       };
       this.persistSessionData(sessionData);
     } catch (e: any) {
-      if (e.response?.status === 401) {
-        throw new Error("Unable to login to nhltv.nhl.com. Username or password incorrect.");
+      if (e.response?.status === 403) {
+        throw new Error("Unable to login to nhltv.nhl.com. Username or password incorrect. " + e.response.data?.error);
       }
       throw e;
     }
@@ -131,10 +126,10 @@ class NhltvCleengAuthenticationSession implements INhltvCleengAuthenticationSess
   
   async hasValidAuthenticationToken(): Promise<boolean> {
     try {
-      const userResult = await timeXhrRequest(nhltvCleengApi, {
-        url: "/v3/cleeng/user",
+      const userResult = await timeXhrRequestPost(nhltvCleengApi, {
+        url: "/v3/sso/nhl/extend_token",
         headers: {
-          Cookie: `token=${this.sessionData.token}`,
+          Authorization: this.sessionData.token,
         },
       });
       

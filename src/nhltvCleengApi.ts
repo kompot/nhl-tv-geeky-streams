@@ -1,7 +1,7 @@
 import axiosRestyped from "restyped-axios";
 import { idPathVariableInterceptor } from "./geekyStreamsApi";
 
-const NhltvCleengApiBaseUrl = 'https://nhltv.nhl.com/api';
+const NhltvCleengApiBaseUrl = 'https://nhl.spott2.sportradar.com/api';
 
 export interface NhltvCleengApi {
   "/v2/events": {
@@ -14,9 +14,9 @@ export interface NhltvCleengApi {
       response: NhltvCleengEventsResponse;
     };
   };
-  "/v3/cleeng/user": {
-    GET: {
-      params: {};
+  "/v3/sso/nhl/extend_token": {
+    POST: {
+      body: {};
       response: {};
     };
   };
@@ -25,9 +25,7 @@ export interface NhltvCleengApi {
       params: {
         id: number;
       };
-      body: {
-        type: 'nhl';
-      };
+      body: {};
       response: NhltvCleengCheckFeedAccessResponse;
     };
   };
@@ -40,15 +38,13 @@ export interface NhltvCleengApi {
       response: NhltvCleengFeedPlayerSettingsResponse;
     };
   };
-  "/v3/sso/nhl/sign-in": {
+  "/v3/sso/nhl/login": {
     POST: {
       body: {
         email: string;
         password: string;
-        code: string | null;
-        gCaptchaResponse: string | null;
       };
-      response: {};
+      response: NhltvCleengLoginResponse;
     }
   };
 };
@@ -128,6 +124,11 @@ export interface NhltvCleengCheckFeedAccessResponse {
 
 export interface NhltvCleengFeedPlayerSettingsResponse {
   streamAccess: string;
+}
+
+export interface NhltvCleengLoginResponse {
+  error: string;
+  token: string;
 }
 
 export interface NhltvCleengStreamAccessResponse {

@@ -181,7 +181,8 @@ const processStream = (
   const resolution = `${rows}p${framerate}`;
   const bandwidth = pl.attributes.BANDWIDTH;
   const bitrate = "" + bandwidth / 1000 + "k";
-  const downloadUrl = masterUrl.substring(0, masterUrl.lastIndexOf("/") + 1) + pl.uri;
+  const streamUrl = new URL(pl.uri, masterUrl);
+  const downloadUrl = streamUrl.href;
 
   return {
     bandwidth,
@@ -204,10 +205,22 @@ export const getHlsProcessedStreams = async (
   parser.push(masterPlaylistContent.data);
   parser.end();
 
-  const streams: ProcessedStream[] = parser.manifest.playlists.map((playlist: any) => {
+  const allStreams: ProcessedStream[] = parser.manifest.playlists.map((playlist: any) => {
     return processStream(playlist, masterUrl);
   });
-  streams.sort((x, y) => y.bandwidth - x.bandwidth);
+  allStreams.sort((x, y) => y.bandwidth - x.bandwidth);
+
+  const streams: ProcessedStream[] = [];
+  const streamUrls = new Map<string, ProcessedStream>();
+
+  for (const stream of allStreams) {
+    if (streamUrls.get(stream.downloadUrl)) {
+      continue;
+    }
+
+    streamUrls.set(stream.downloadUrl, stream);
+    streams.push(stream);
+  }
 
   return streams;
 };

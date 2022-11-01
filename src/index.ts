@@ -72,7 +72,7 @@ Requires a favourite team and preferred stream quality.`,
   const hasFavouriteTeams = !!(config.favouriteTeams && config.favouriteTeams.length);
   config.hideOtherTeams = hasFavouriteTeams && config.hideOtherTeams ||
                           argv.passive;
-  setLogTimings(!!config.enableLogTimings);
+  setLogTimings(config.enableLogTimings);
 
   if (!startDate) {
     // will set timezone to somewhat central US so that we always get all matches

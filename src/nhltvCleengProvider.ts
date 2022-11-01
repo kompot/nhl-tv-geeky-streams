@@ -18,6 +18,7 @@ import {
   ProviderTeam,
   timeXhrRequest,
   timeXhrRequestPost,
+  HttpUserAgent,
 } from "./geekyStreamsApi";
 import {
   NHLTV_CLEENG_MEDIA_STATE,
@@ -131,7 +132,12 @@ class NhltvCleengStream implements ProviderStream {
   }
 
   download(filename: string, offset: OffsetObject, streamlinkExtraOptions: string[] | undefined): void {
-    return download(filename, offset, this.stream.downloadUrl, undefined, streamlinkExtraOptions);
+    const streamlinkAuthOptions = [
+      `--http-header`,
+      "User-Agent=" + HttpUserAgent,
+    ];
+
+    return download(filename, offset, this.stream.downloadUrl, streamlinkAuthOptions, streamlinkExtraOptions);
   }
 
   getStream(): ProcessedStream {
@@ -211,16 +217,15 @@ const getNhltvCleengStreamList = async (
   });
 
   const streamAccessUrl = playerSettingsResponse.data.streamAccess;
-
-  const separator = -1 === streamAccessUrl.indexOf('?') ? '?' : '&';
-  const authenticatedStreamAccessUrl = streamAccessUrl + separator + 'authorization_code=' + mediaAuth;
-
   const streamAccessEndpoint = axiosRestyped.create<NhltvCleengStreamAccessApi>({
-    baseURL: authenticatedStreamAccessUrl,
+    baseURL: streamAccessUrl,
   });
 
   const streamAccessResponse = await timeXhrRequestPost(streamAccessEndpoint, {
     url: "",
+    headers: {
+      authorization: mediaAuth,
+    }
   });
 
   if (!streamAccessResponse.data.data?.stream) {

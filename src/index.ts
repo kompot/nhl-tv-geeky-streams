@@ -163,13 +163,10 @@ const getGameList = async (
   config: Config,
   date: luxon.DateTime
 ): Promise<ProcessedGameList> => {
-  // Continue using legacy NHL.TV API to get the game's status.
-  const nhltvGamesPromise = getNhltvGameList(config, date);
   const nhltvCleengGamesPromise = getNhltvCleengGameList(config, date);
   const espnGamesPromise = getEspnGameList(config, date);
   const ballyGamesPromise = config.enableExperimentalProviders ? getBallyGameList(config, date) : null;
   const viaplayGamesPromise = config.enableExperimentalProviders ? getViaplayGameList(config, date) : null;
-  const nhltvGames = await nhltvGamesPromise;
   const nhltvCleengGames = await nhltvCleengGamesPromise;
   const espnGames = await espnGamesPromise;
   const ballyGames = await ballyGamesPromise ?? [];
@@ -179,7 +176,7 @@ const getGameList = async (
   const games: ProcessedGame[] = [];
   const hiddenGames: ProcessedGame[] = [];
   
-  [...nhltvGames, ...nhltvCleengGames, ...espnGames, ...ballyGames, ...viaplayGames].forEach(providerGame => {
+  [...nhltvCleengGames, ...espnGames, ...ballyGames, ...viaplayGames].forEach(providerGame => {
     const key = getGameId(providerGame.getGameDateTime(), providerGame.getAwayTeam(), providerGame.getHomeTeam());
 
     let collection = gamesById.get(key);

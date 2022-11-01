@@ -10,6 +10,8 @@ import {
   GAME_DETAILED_STATE,
 } from "./nhlStatsApi";
 
+export const HttpUserAgent = 'nhltv/0.27.2';
+
 export interface Config {
   emailNhltv: string;
   passwordNhltv: string;
@@ -245,10 +247,29 @@ export const idPathVariableInterceptor = (config: AxiosRequestConfig): AxiosRequ
 
 export const timeXhrFetch = async (url: string, config?: AxiosRequestConfig): Promise<AxiosResponse> => {
   const start = new Date();
-  if (enableLogTimings) console.log('beginFetch', url, start);
+
+  if (!config) {
+    config = {};
+  }
+
+  const defaultHeaders = {
+    'User-Agent': HttpUserAgent,
+  };
+  config.headers = {...config.headers, ...defaultHeaders};
+
+  if (enableLogTimings) {
+    console.log('beginFetch', url, "params:", config.params, "request-headers:", config.headers, start);
+  }
+
   const result = await axios.get(url, config);
   const end = new Date();
-  if (enableLogTimings) console.log('endFetch', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+
+  if (enableLogTimings) {
+    console.log('endFetch', url, "status:", result.status, end, "ms:", luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+    console.log('result-headers:', result.headers);
+    console.log('');
+  }
+
   return result;
 }
 
@@ -285,10 +306,25 @@ export const timeXhrRequest = async <TAPI extends RestypedBase, TPath extends Ex
   config: TypedAxiosRequestConfig<TAPI, TPath, TMethod>
 ): Promise<TypedAxiosResponse<TAPI, TPath, TMethod>> => {
   const start = new Date();
-  if (enableLogTimings) console.log('beginRequest', config.url, start);
+
+  const defaultHeaders = {
+    'User-Agent': HttpUserAgent,
+  };
+  config.headers = {...config.headers, ...defaultHeaders};
+
+  if (enableLogTimings) {
+    console.log('beginRequest', config.method, config.url, '['+axiosInstance.defaults.baseURL+']', "params:", config.params, "request-headers:", config.headers, start);
+  }
+
   const result = await axiosInstance.request(config);
   const end = new Date();
-  if (enableLogTimings) console.log('endRequest', config.url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+
+  if (enableLogTimings) {
+    console.log('endRequest', config.url, "status:", result.status, end, "ms:", luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+    console.log('result-headers:', result.headers);
+    console.log('');
+  }
+
   return result;
 }
 

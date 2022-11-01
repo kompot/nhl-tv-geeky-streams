@@ -1,7 +1,7 @@
 import axiosRestyped from "restyped-axios";
 import { idPathVariableInterceptor } from "./geekyStreamsApi";
 
-const NhltvCleengApiBaseUrl = 'https://nhl.spott2.sportradar.com/api';
+const NhltvCleengApiBaseUrl = 'https://nhltv.nhl.com/api';
 
 export interface NhltvCleengApi {
   "/v2/events": {

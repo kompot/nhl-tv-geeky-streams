@@ -11,6 +11,8 @@ import {
 } from "./nhlStatsApi";
 
 export interface Config {
+  disableNhltv: boolean;
+  disableEspn: boolean;
   emailNhltv: string;
   passwordNhltv: string;
   emailNhlLive: string;

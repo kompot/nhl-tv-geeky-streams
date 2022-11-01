@@ -13,8 +13,6 @@ import {
 export interface Config {
   emailNhltv: string;
   passwordNhltv: string;
-  emailNhlLive: string;
-  passwordNhlLive: string;
   viaplayCountry?: string;
   matchTimeZone: string;
   playLiveGamesFromStart?: boolean;
@@ -25,6 +23,8 @@ export interface Config {
   preferredStreamQuality?: string;
   enableLogTimings?: boolean;
   enableExperimentalProviders?: boolean;
+  showOtherProviders?: boolean;
+  disableLegacyNhltvGameStatus?: boolean;
 }
 
 export interface OffsetObject {

@@ -39,8 +39,14 @@ hideOtherTeams: false
 #preferredStreamQuality: best
 
 # preferred provider
-# 'nhltv', 'nhllive', or 'espn'
+# 'nhltv' or 'espn'
 # preferredProvider: nhltv
+
+# when false, will only show feeds from preferredProvider.
+showOtherProviders: false
+
+# whether to use legacy NHL.TV API to get the game status
+disableLegacyNhltvGameStatus: false
 
 
 # ===================================

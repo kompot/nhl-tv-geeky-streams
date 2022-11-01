@@ -22,8 +22,8 @@ interface RenderedFeedList {
   preferredFeeds: RenderedFeed[];
 }
 
-// WatchESPN
-const maxProviderName = 9;
+// viaplay.se
+const maxProviderName = 10;
 // COMPOSITE
 const maxMediaFeedType = 9;
 // ESPN Deportes
@@ -39,9 +39,10 @@ const renderFeedName = (
     paddedProviderName = _.padStart(paddedProviderName, 2 + maxProviderName);
   }
 
+  const mediaFeedType = feed.info.mediaFeedType === MediaFeedType.Unknown ? "" : feed.info.mediaFeedType as string;
   const name = _.compact([
     paddedProviderName,
-    _.padEnd(feed.info.mediaFeedType, maxMediaFeedType),
+    _.padEnd(mediaFeedType, maxMediaFeedType),
     feed.info.callLetters ? _.padEnd(feed.info.callLetters, maxCallLetters) : "",
     feed.info.feedName
   ]).join("  ");

@@ -47,6 +47,7 @@ export interface ViaplayContentProductEpg {
 
 export interface ViaplayContentProductSystem {
   flags: string[];
+  keyTimes: any[];
 }
 
 export interface ViaplayContentProductContentFormat {

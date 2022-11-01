@@ -143,7 +143,7 @@ export const getViaplayGameList = async (
     }
 
     for (const product of block._embedded["viaplay:products"]) {
-      if (product.type !== "sport" || product.content?.format?.title !== "NHL") {
+      if (product.type !== "sport" || product.content?.format?.title !== "NHL" || !product.system.keyTimes) {
         continue;
       }
 

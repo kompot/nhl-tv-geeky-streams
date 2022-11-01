@@ -3,7 +3,6 @@ import * as fs from "fs";
 
 import {
   Config,
-  timeXhrRequest,
   timeXhrRequestPost,
 } from "./geekyStreamsApi";
 import {

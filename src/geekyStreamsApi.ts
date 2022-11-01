@@ -197,9 +197,10 @@ export const getDashProcessedStreams = async (masterUrl: string): Promise<Proces
 }
 
 export const getHlsProcessedStreams = async (
-  masterUrl: string
+  masterUrl: string,
+  config?: AxiosRequestConfig,
 ): Promise<ProcessedStream[]> => {
-  const masterPlaylistContent = await timeXhrFetch(masterUrl);
+  const masterPlaylistContent = await timeXhrFetch(masterUrl, config);
 
   const parser = new m3u8Parser.Parser();
   parser.push(masterPlaylistContent.data);

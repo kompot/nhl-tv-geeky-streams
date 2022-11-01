@@ -26,6 +26,7 @@ import {
   NhltvCleengEventContentItem,
   NhltvCleengEventCompetitor,
   NhltvCleengStreamAccessApi,
+  NhltvCleengHttpUserAgent,
 } from "./nhltvCleengApi";
 import {
   createNhltvCleengAuthSession,
@@ -131,7 +132,12 @@ class NhltvCleengStream implements ProviderStream {
   }
 
   download(filename: string, offset: OffsetObject, streamlinkExtraOptions: string[] | undefined): void {
-    return download(filename, offset, this.stream.downloadUrl, undefined, streamlinkExtraOptions);
+    const streamlinkAuthOptions = [
+      `--http-header`,
+      "User-Agent=" + NhltvCleengHttpUserAgent,
+    ];
+
+    return download(filename, offset, this.stream.downloadUrl, streamlinkAuthOptions, streamlinkExtraOptions);
   }
 
   getStream(): ProcessedStream {
@@ -211,16 +217,16 @@ const getNhltvCleengStreamList = async (
   });
 
   const streamAccessUrl = playerSettingsResponse.data.streamAccess;
-
-  const separator = -1 === streamAccessUrl.indexOf('?') ? '?' : '&';
-  const authenticatedStreamAccessUrl = streamAccessUrl + separator + 'authorization_code=' + mediaAuth;
-
   const streamAccessEndpoint = axiosRestyped.create<NhltvCleengStreamAccessApi>({
-    baseURL: authenticatedStreamAccessUrl,
+    baseURL: streamAccessUrl,
   });
 
   const streamAccessResponse = await timeXhrRequestPost(streamAccessEndpoint, {
     url: "",
+    headers: {
+      authorization: mediaAuth,
+      'User-Agent': NhltvCleengHttpUserAgent,
+    },
   });
 
   if (!streamAccessResponse.data.data?.stream) {
@@ -229,7 +235,11 @@ const getNhltvCleengStreamList = async (
   }
 
   const masterUrl = streamAccessResponse.data.data.stream;
-  const streams = await getHlsProcessedStreams(masterUrl);
+  const streams = await getHlsProcessedStreams(masterUrl, {
+    headers: {
+      'User-Agent': NhltvCleengHttpUserAgent,
+    },
+  });
   streamList.streams = streams.map(s => {
     return new NhltvCleengStream(s, authSession, mediaAuth);
   });

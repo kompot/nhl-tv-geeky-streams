@@ -1,7 +1,8 @@
 import axiosRestyped from "restyped-axios";
 import { idPathVariableInterceptor } from "./geekyStreamsApi";
 
-const NhltvCleengApiBaseUrl = 'https://nhl.spott2.sportradar.com/api';
+const NhltvCleengApiBaseUrl = 'https://nhltv.nhl.com/api';
+export const NhltvCleengHttpUserAgent = 'nhltv/0.27.2';
 
 export interface NhltvCleengApi {
   "/v2/events": {
@@ -60,6 +61,9 @@ export interface NhltvCleengStreamAccessApi {
 
 export const nhltvCleengApi = axiosRestyped.create<NhltvCleengApi>({
   baseURL: NhltvCleengApiBaseUrl,
+  headers: {
+    'User-Agent': NhltvCleengHttpUserAgent,
+  },
 });
 nhltvCleengApi.interceptors.request.use(idPathVariableInterceptor);
 

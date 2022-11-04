@@ -21,7 +21,7 @@ export interface Config {
   hideOtherTeams?: boolean;
   preferredProvider?: string;
   preferredStreamQuality?: string;
-  enableLogTimings?: boolean;
+  enableLogTimings?: string;
   enableExperimentalProviders?: boolean;
   showOtherProviders?: boolean;
   disableLegacyNhltvGameStatus?: boolean;
@@ -197,9 +197,10 @@ export const getDashProcessedStreams = async (masterUrl: string): Promise<Proces
 }
 
 export const getHlsProcessedStreams = async (
-  masterUrl: string
+  masterUrl: string,
+  config?: AxiosRequestConfig,
 ): Promise<ProcessedStream[]> => {
-  const masterPlaylistContent = await timeXhrFetch(masterUrl);
+  const masterPlaylistContent = await timeXhrFetch(masterUrl, config);
 
   const parser = new m3u8Parser.Parser();
   parser.push(masterPlaylistContent.data);
@@ -229,9 +230,9 @@ export const getGameId = (gameDateTime: luxon.DateTime, awayTeam: ProviderTeam, 
   return `${gameDateTime.toFormat("yyyy_MM_dd")}_${awayTeam.abbreviation}_${homeTeam.abbreviation}`;
 }
 
-let enableLogTimings = false;
-export const setLogTimings = (enable: boolean): void => {
-  enableLogTimings = enable;
+let logTimings: string | undefined;
+export const setLogTimings = (enableLogTimings: string | undefined): void => {
+  logTimings = enableLogTimings;
 }
 
 export const idPathVariableInterceptor = (config: AxiosRequestConfig): AxiosRequestConfig => {
@@ -245,10 +246,24 @@ export const idPathVariableInterceptor = (config: AxiosRequestConfig): AxiosRequ
 
 export const timeXhrFetch = async (url: string, config?: AxiosRequestConfig): Promise<AxiosResponse> => {
   const start = new Date();
-  if (enableLogTimings) console.log('beginFetch', url, start);
+
+  if (logTimings === 'debug') {
+    console.log('beginFetch', url, "params:", config?.params, "request-headers:", config?.headers, start);
+  } else if (logTimings === 'progress') {
+    console.log('beginFetch', url, start);
+  }
+
   const result = await axios.get(url, config);
   const end = new Date();
-  if (enableLogTimings) console.log('endFetch', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+
+  if (logTimings === 'debug') {
+    console.log('endFetch', url, "status:", result.status, end, "ms:", luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+    console.log('result-headers:', result.headers);
+    console.log('');
+  } else if (logTimings === 'progress') {
+    console.log('endFetch', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  }
+
   return result;
 }
 
@@ -259,10 +274,24 @@ export const timeXhrGet = async <TAPI extends RestypedBase, TPath extends Extrac
 ): Promise<TypedAxiosResponse<TAPI, TPath, 'GET'>> => {
   const id = config?.params?.id;
   const start = new Date();
-  if (enableLogTimings) console.log('beginGet', url, id, start);
+
+  if (logTimings === 'debug') {
+    console.log('beginGet', url, "params:", config?.params, "request-headers:", config?.headers, start);
+  } else if (logTimings === 'progress') {
+    console.log('beginGet', url, id, start);
+  }
+
   const result = await axiosInstance.get(url, config);
   const end = new Date();
-  if (enableLogTimings) console.log('endGet', url, id, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+
+  if (logTimings === 'debug') {
+    console.log('endGet', url, "status:", result.status, end, "ms:", luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+    console.log('result-headers:', result.headers);
+    console.log('');
+  } else if (logTimings === 'progress') {
+    console.log('endGet', url, id, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  }
+
   return result;
 }
 
@@ -273,10 +302,24 @@ export const timeXhrPost = async <TAPI extends RestypedBase, TPath extends Extra
   config?: TypedAxiosRequestConfig<TAPI, TPath, 'POST'>
 ): Promise<TypedAxiosResponse<TAPI, TPath, 'POST'>> => {
   const start = new Date();
-  if (enableLogTimings) console.log('beginPost', url, start);
+
+  if (logTimings === 'debug') {
+    console.log('beginPost', url, "params:", config?.params, "request-headers:", config?.headers, start);
+  } else if (logTimings === 'progress') {
+    console.log('beginPost', url, start);
+  }
+
   const result = await axiosInstance.post(url, data, config);
   const end = new Date();
-  if (enableLogTimings) console.log('endPost', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+
+  if (logTimings === 'debug') {
+    console.log('endPost', url, "status:", result.status, end, "ms:", luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+    console.log('result-headers:', result.headers);
+    console.log('');
+  } else if (logTimings === 'progress') {
+    console.log('endPost', url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  }
+
   return result;
 }
 
@@ -285,10 +328,24 @@ export const timeXhrRequest = async <TAPI extends RestypedBase, TPath extends Ex
   config: TypedAxiosRequestConfig<TAPI, TPath, TMethod>
 ): Promise<TypedAxiosResponse<TAPI, TPath, TMethod>> => {
   const start = new Date();
-  if (enableLogTimings) console.log('beginRequest', config.url, start);
+
+  if (logTimings === 'debug') {
+    console.log('beginRequest', config.method, config.url, '['+axiosInstance.defaults.baseURL+']', "params:", config.params, "request-headers:", config.headers, start);
+  } else if (logTimings === 'progress') {
+    console.log('beginRequest', config.url, start);
+  }
+
   const result = await axiosInstance.request(config);
   const end = new Date();
-  if (enableLogTimings) console.log('endRequest', config.url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+
+  if (logTimings === 'debug') {
+    console.log('endRequest', config.url, "status:", result.status, end, "ms:", luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+    console.log('result-headers:', result.headers);
+    console.log('');
+  } else if (logTimings === 'progress') {
+    console.log('endRequest', config.url, end, luxon.DateTime.fromJSDate(end).diff(luxon.DateTime.fromJSDate(start)).toMillis());
+  }
+
   return result;
 }
 

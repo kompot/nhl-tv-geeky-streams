@@ -164,10 +164,11 @@ const getGameList = async (
   date: luxon.DateTime
 ): Promise<ProcessedGameList> => {
   const disableNhltv = !!config.disableLegacyNhltvGameStatus;
-  const disableNhltvCleeng = !config.showOtherProviders && config.preferredProvider !== 'nhltv';
-  const disableEspn = !config.showOtherProviders && config.preferredProvider !== 'espn';
-  const disableBally = !config.enableExperimentalProviders || !config.showOtherProviders && config.preferredProvider !== 'bally';
-  const disableViaplay = !config.enableExperimentalProviders || !config.showOtherProviders && config.preferredProvider !== 'viaplay.se';
+  const disableOtherProviders = !config.showOtherProviders && !!config.preferredProvider;
+  const disableNhltvCleeng = disableOtherProviders && config.preferredProvider !== 'nhltv';
+  const disableEspn = disableOtherProviders && config.preferredProvider !== 'espn';
+  const disableBally = !config.enableExperimentalProviders || disableOtherProviders && config.preferredProvider !== 'bally';
+  const disableViaplay = !config.enableExperimentalProviders || disableOtherProviders && config.preferredProvider !== 'viaplay.se';
 
   // Continue using legacy NHL.TV API to get the game's status.
   const nhltvGamesPromise = disableNhltv ? null : getNhltvGameList(config, date);

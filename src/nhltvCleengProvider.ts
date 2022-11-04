@@ -240,8 +240,19 @@ const getNhltvCleengStreamList = async (
       'User-Agent': NhltvCleengHttpUserAgent,
     },
   });
-  streamList.streams = streams.map(s => {
-    return new NhltvCleengStream(s, authSession, mediaAuth);
+  
+  // The master playlist consistently has multiple streams for the same bitrate.
+  // Remove the streams that do not share the parent path of the master playlist.
+  const masterURL = new URL(masterUrl);
+  const masterParentPath = masterURL.origin + masterURL.pathname.substring(0, masterURL.pathname.lastIndexOf('/'));
+
+  streams.forEach(s => {
+    if (!s.downloadUrl.startsWith(masterParentPath)) {
+      return;
+    }
+
+    const stream = new NhltvCleengStream(s, authSession, mediaAuth);
+    streamList.streams.push(stream);
   });
 
   return streamList;

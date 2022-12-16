@@ -242,18 +242,29 @@ const getNhltvCleengStreamList = async (
   });
   
   // The master playlist consistently has multiple streams for the same bitrate.
-  // Remove the streams that do not share the parent path of the master playlist.
+  // So far, the second stream of each bitrate doesn't work and has -b/ somewhere in the URL.
+  // For now, assume that the -b/ is a better indicator than the order.
   const masterURL = new URL(masterUrl);
   const masterParentPath = masterURL.origin + masterURL.pathname.substring(0, masterURL.pathname.lastIndexOf('/'));
 
+  const allProviderStreams: NhltvCleengStream[] = [];
   streams.forEach(s => {
-    if (!s.downloadUrl.startsWith(masterParentPath)) {
+    const stream = new NhltvCleengStream(s, authSession, mediaAuth);
+    allProviderStreams.push(stream);
+  });
+
+  allProviderStreams.forEach(ps => {
+    if (ps.stream.downloadUrl.indexOf('-b/') !== -1 || ps.stream.downloadUrl.indexOf('-b%2f') !== -1) {
       return;
     }
 
-    const stream = new NhltvCleengStream(s, authSession, mediaAuth);
-    streamList.streams.push(stream);
+    streamList.streams.push(ps);
   });
+
+  // Failsafe in case all the streams are filtered out.
+  if (streamList.streams.length === 0) {
+    streamList.streams = allProviderStreams;
+  }
 
   return streamList;
 };

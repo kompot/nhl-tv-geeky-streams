@@ -254,7 +254,8 @@ const getNhltvCleengStreamList = async (
   });
 
   allProviderStreams.forEach(ps => {
-    if (ps.stream.downloadUrl.indexOf('-b/') !== -1 || ps.stream.downloadUrl.indexOf('-b%2f') !== -1) {
+    const testString = ps.stream.downloadUrl.toLowerCase();
+    if (testString.indexOf('-b/') !== -1 || testString.indexOf('-b%2f') !== -1) {
       return;
     }
 

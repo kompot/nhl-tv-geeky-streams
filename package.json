@@ -22,7 +22,7 @@
     "inquirer": "^8.2.4",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
-    "luxon": "^2.3.2",
+    "luxon": "^2.5.2",
     "m3u8-parser": "^4.7.1",
     "restyped-axios": "^2.0.0",
     "shelljs": "^0.8.5",

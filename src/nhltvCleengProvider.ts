@@ -46,15 +46,17 @@ class NhltvCleengFeed implements ProviderFeed {
   }
 
   getFeed(): ProcessedFeed {
-    let mediaFeedTypeString = "";
+    let name: string | undefined = "";
+    let description: string | undefined = "";
+    let feedName = "";
     if (this.epgItem.clientContentMetadata.length) {
-      mediaFeedTypeString = this.epgItem.clientContentMetadata[0].name;
-    } else if (this.epgItem.editorial.translations?.en?.description) {
-      mediaFeedTypeString = this.epgItem.editorial.translations?.en?.description?.toUpperCase();
+      name = this.epgItem.clientContentMetadata[0].name?.toUpperCase();
     }
-    
+    description = this.epgItem.editorial.translations?.en?.description;
+
     let callLetters = "";
     let mediaFeedType: MediaFeedType = MediaFeedType.Unknown;
+    let mediaFeedTypeString = name || description || "";
     if (mediaFeedTypeString === "US NATIONAL") {
       mediaFeedType = MediaFeedType.National;
       callLetters = "US";
@@ -65,6 +67,14 @@ class NhltvCleengFeed implements ProviderFeed {
       mediaFeedType = mediaFeedTypeString as MediaFeedType;
     }
 
+    if (description && description !== mediaFeedTypeString && description !== mediaFeedType && description !== callLetters) {
+      if (!callLetters) {
+        callLetters = description;
+      } else {
+        feedName = description;
+      }
+    }
+
     return {
       providerFeed: this,
       isArchiveTvStream: this.epgItem.status.name === NHLTV_CLEENG_MEDIA_STATE.DELIVERED,
@@ -72,7 +82,7 @@ class NhltvCleengFeed implements ProviderFeed {
       info: {
         mediaFeedType,
         callLetters,
-        feedName: "",
+        feedName,
       },
     };
   }

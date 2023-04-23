@@ -14,6 +14,7 @@ interface RenderedFeed {
   displayName: string;
   disabledReason?: string;
   isForFavouriteTeam: boolean;
+  isPreferredMediaType: boolean;
   processedFeed: ProcessedFeed;
 }
 
@@ -31,8 +32,7 @@ const maxCallLetters = 13;
 
 const renderFeedName = (
   feed: ProcessedFeed,
-  isAvailable: boolean,
-  isForFavouriteTeam: boolean
+  isAvailable: boolean
 ): string => {
   let paddedProviderName = _.padEnd(feed.providerFeed.providerName, maxProviderName);
   if (isAvailable) {
@@ -47,11 +47,14 @@ const renderFeedName = (
     feed.info.feedName
   ]).join("  ");
 
-  const feedName = isForFavouriteTeam ? chalk.yellow(name) : name;
-  return feedName;
+  return name;
 };
 
 const renderFeed = (game: ProcessedGame, feed: ProcessedFeed): RenderedFeed => {
+  const preferredMediaType = !game.hasFavouriteTeam ? MediaFeedType.Unknown :
+                              game.isAwayTeamFavourite ? MediaFeedType.Away : MediaFeedType.Home;
+  const isPreferredMediaType = preferredMediaType !== MediaFeedType.Unknown &&
+                               preferredMediaType === feed.info.mediaFeedType;
   const isForFavouriteTeam = feed.info.mediaFeedType === MediaFeedType.National && game.hasFavouriteTeam ||
                              feed.info.mediaFeedType === MediaFeedType.Away && game.isAwayTeamFavourite ||
                              feed.info.mediaFeedType === MediaFeedType.Home && game.isHomeTeamFavourite;
@@ -63,9 +66,10 @@ const renderFeed = (game: ProcessedGame, feed: ProcessedFeed): RenderedFeed => {
   }
 
   return {
-    displayName: renderFeedName(feed, !disabledReason, isForFavouriteTeam),
+    displayName: renderFeedName(feed, !disabledReason),
     disabledReason: disabledReason,
     isForFavouriteTeam,
+    isPreferredMediaType,
     processedFeed: feed,
   };
 }
@@ -74,17 +78,29 @@ const renderFeeds = (
   game: ProcessedGame
 ): RenderedFeedList => {
   const preferredFeeds: RenderedFeed[] = [];
+  let ignoreNational = false;
   const feeds = game.feedList.feeds.map(feed => {
     const renderedFeed = renderFeed(game, feed);
     if (renderedFeed.isForFavouriteTeam) {
       preferredFeeds.push(renderedFeed);
+
+      if (renderedFeed.isPreferredMediaType) {
+        ignoreNational = true;
+      }
     }
     return renderedFeed;
   });
 
+  const filteredPreferredFeeds = preferredFeeds.filter(f => {
+    return f.isPreferredMediaType || !ignoreNational && f.isForFavouriteTeam;
+  });
+  for (const preferredFeed of filteredPreferredFeeds) {
+    preferredFeed.displayName = chalk.yellow(preferredFeed.displayName);
+  }
+
   return {
     feeds,
-    preferredFeeds,
+    preferredFeeds: filteredPreferredFeeds,
   };
 };
 

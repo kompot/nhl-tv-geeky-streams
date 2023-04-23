@@ -20,6 +20,7 @@ export interface Config {
   streamlinkExtraOptions?: string[];
   hideOtherTeams?: boolean;
   preferredProvider?: string;
+  preferredFeedStrategy?: string;
   preferredStreamQuality?: string;
   enableLogTimings?: string;
   enableExperimentalProviders?: boolean;

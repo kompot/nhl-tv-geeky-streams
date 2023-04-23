@@ -148,7 +148,7 @@ export const chooseFeed = (
   }
 
   if (passive) {
-    return chooseFeedPassively(renderedFeedList);
+    return chooseFeedPassively(config, renderedFeedList);
   } else {
     return chooseFeedInteractively(renderedFeedList);
   }
@@ -196,9 +196,26 @@ const chooseFeedInteractively = async (
 };
 
 const chooseFeedPassively = async (
+  config: Config,
   feedList: RenderedFeedList
 ): Promise<FeedSelection> => {
-  if (feedList.preferredFeeds.length === 1) {
+  let pickFirstPreferredFeed = false;
+  if (config.preferredFeedStrategy) {
+    switch (config.preferredFeedStrategy) {
+      case 'default':
+        // valid
+        break;
+      case 'fallbackToAny':
+        pickFirstPreferredFeed = true;
+        break;
+      default:
+        throw new Error(`Unknown preferredFeedStrategy: ${config.preferredFeedStrategy}`);
+    }
+  }
+
+  if (feedList.preferredFeeds.length === 1 ||
+      feedList.preferredFeeds.length > 1 && pickFirstPreferredFeed
+  ) {
     const selectedFeed = feedList.preferredFeeds[0];
     const feedSelection: FeedSelection = {
       isGameChange: false,

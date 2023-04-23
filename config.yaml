@@ -33,6 +33,13 @@ streamlinkExtraOptions: []
 # do not show other teams' games in case favorite teams are set
 hideOtherTeams: false
 
+# strategy to select preferred feed
+# the default strategy means that it will prefer the feed for a favorite team
+#   and it will give up if it finds multiple feeds
+# the 'fallbackToAny' strategy will act like the default strategy,
+#   but if there are multiple preferred feeds then it picks the first one
+#preferredFeedStrategy: fallbackToAny
+
 # preferred stream quality
 # currently NHLTV offers 216p, 288p, 360p, 504p, 540p, 720p, 720p60
 # 'best' and 'worst' are also available

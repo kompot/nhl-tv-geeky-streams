@@ -259,7 +259,7 @@ const isFavouriteTeam = (
 ): boolean => !!favouriteTeamsAbbreviations && favouriteTeamsAbbreviations.indexOf(team.abbreviation) !== -1;
 
 const sanitizeFeedInfoForFileName = (s: string): string => {
-  return s ? s.replace(/(\s|\.)+/g, "_").replace('+', 'plus') : s;
+  return s ? s.replace(/(\s|\.|\/)+/g, "_").replace('+', 'plus') : s;
 }
 
 main();

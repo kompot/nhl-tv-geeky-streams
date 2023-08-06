@@ -1,4 +1,4 @@
-FROM node:18.1-alpine3.15
+FROM node:20.5-alpine3.18
 
 RUN apk --no-cache add \
     build-base \
@@ -8,7 +8,7 @@ RUN apk --no-cache add \
     libxslt-dev \
     cmd:pip3 \
     ffmpeg
-RUN pip3 install wheel streamlink==4.0.*
+RUN pip3 install wheel streamlink==6.0.*
 
 WORKDIR /app/
 COPY package.json /app/

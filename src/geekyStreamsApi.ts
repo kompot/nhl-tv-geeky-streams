@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import * as _ from "lodash";
 import * as luxon from "luxon";
 import { RestypedBase } from "restyped";
@@ -236,7 +236,7 @@ export const setLogTimings = (enableLogTimings: string | undefined): void => {
   logTimings = enableLogTimings;
 }
 
-export const idPathVariableInterceptor = (config: AxiosRequestConfig): AxiosRequestConfig => {
+export const idPathVariableInterceptor = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
   if (config.params && config.url) {
     config.url = config.url.replace("/:id", `/${config.params.id}`);
     config.params.id = undefined;

@@ -121,8 +121,8 @@ export interface NhlStatsApi {
   "/schedule": {
     GET: {
       query: {
-        startDate: DateShort;
-        endDate: DateShort;
+        startDate: DateShort | null;
+        endDate: DateShort | null;
         expand: string;
       };
       response: {

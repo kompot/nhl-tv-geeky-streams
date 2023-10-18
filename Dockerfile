@@ -1,4 +1,4 @@
-FROM node:20.5-alpine3.18
+FROM node:20.8.1-alpine3.18
 
 RUN apk --no-cache add \
     build-base \

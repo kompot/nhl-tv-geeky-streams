@@ -33,6 +33,7 @@
     "yargs": "^17.7.2"
   },
   "resolutions": {
+    "bufferutil": "^4.0.8",
     "node-gyp-build": "^4.6.1",
     "restyped-axios/axios": "^1.4.0",
     "shelljs/rechoir": "^0.8.0"

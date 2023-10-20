@@ -4,7 +4,7 @@ import * as inquirer from "inquirer";
 import * as luxon from "luxon";
 import * as querystring from "querystring";
 import axiosRestyped from "restyped-axios";
-import * as npmWebSocket from "websocket";
+import * as npmWebSocket from "ws";
 
 import {
   BamAccountGrantInfo,
@@ -157,9 +157,9 @@ const activateRegisterDisneyLicensePlate = async (licensePlateData: RegisterDisn
     try {
       console.log(`In order to login, navigate to https://espn.com/activate and enter the code '${licensePlateData.pairingCode}'`);
 
-      const fastcastWebsocket = new npmWebSocket.w3cwebsocket(`wss://${fastCastData.ip}:${fastCastData.securePort}/FastcastService/pubsub/profiles/${licensePlateData.fastCastProfileId}?TrafficManager-Token=${encodeURIComponent(fastCastData.token)}`);
+      const fastcastWebsocket = new npmWebSocket.WebSocket(`wss://${fastCastData.ip}:${fastCastData.securePort}/FastcastService/pubsub/profiles/${licensePlateData.fastCastProfileId}?TrafficManager-Token=${encodeURIComponent(fastCastData.token)}`);
   
-      fastcastWebsocket.onmessage = (ev: npmWebSocket.IMessageEvent): void => {
+      fastcastWebsocket.onmessage = (ev: npmWebSocket.MessageEvent): void => {
         const evData = JSON.parse(ev.data as string);
         switch (evData.op as string) {
           case "C": {
@@ -181,7 +181,7 @@ const activateRegisterDisneyLicensePlate = async (licensePlateData: RegisterDisn
         }
       };
 
-      fastcastWebsocket.onerror = (ev: Error): any => {
+      fastcastWebsocket.onerror = (ev: npmWebSocket.ErrorEvent): any => {
         console.error(ev);
         reject(ev);
       };

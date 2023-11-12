@@ -5,6 +5,8 @@ import axiosRestyped from "restyped-axios";
 
 import {
   Config,
+  getProviderTeamFromAbbreviation,
+  idPathVariableInterceptor,
   ProviderFeed,
   ProviderGame,
   ProviderGameStatus,
@@ -12,10 +14,12 @@ import {
   timeXhrRequest,
 } from "./geekyStreamsApi";
 import {
-  Game,
+  GAME_DETAILED_STATE,
   NhlStatsApi,
   NhlStatsApiBaseUrl,
-  Team,
+  NhlStatsGameStateType,
+  NhlStatsScheduleGameTeam,
+  NhlStatsScoreGame,
 } from "./nhlStatsApi";
 
 const gamesFile = "./tmp/games.nhltv.json";
@@ -23,20 +27,29 @@ const gamesFile = "./tmp/games.nhltv.json";
 const statsApi = axiosRestyped.create<NhlStatsApi>({
   baseURL: NhlStatsApiBaseUrl
 });
+statsApi.interceptors.request.use(idPathVariableInterceptor);
 
 class NhltvGame implements ProviderGame {
   awayTeam: ProviderTeam;
-  game: Game;
+  game: NhlStatsScoreGame;
   gameDateTime: luxon.DateTime;
+  gameStatus: ProviderGameStatus;
   homeTeam: ProviderTeam;
 
-  constructor(game: Game) {
+  constructor(game: NhlStatsScoreGame) {
     this.game = game;
 
-    this.awayTeam = getProviderTeam(this.game.teams.away.team);
-    this.homeTeam = getProviderTeam(this.game.teams.home.team);
+    this.awayTeam = getProviderTeam(this.game.awayTeam);
+    this.homeTeam = getProviderTeam(this.game.homeTeam);
 
-    this.gameDateTime = luxon.DateTime.fromISO(this.game.gameDate);
+    this.gameDateTime = luxon.DateTime.fromISO(this.game.startTimeUTC);
+    this.gameStatus = calculateProviderGameStatus(
+      game.gameState,
+      game.periodDescriptor?.number,
+      game.clock?.inIntermission,
+      game.clock?.secondsRemaining,
+      game.clock?.timeRemaining,
+    );
   }
 
   getAwayTeam(): ProviderTeam {
@@ -56,20 +69,92 @@ class NhltvGame implements ProviderGame {
   }
 
   getStatus(): ProviderGameStatus {
-    return this.game;
+    return this.gameStatus;
   }
 }
 
-const getProviderTeam = (team: Team): ProviderTeam => {
-  return {
-    abbreviation: team.abbreviation,
-    fullName: team.name,
-    nickname: team.teamName,
+const calculateProviderGameStatus = (
+  gameState: NhlStatsGameStateType,
+  periodNumber?: number,
+  isIntermission?: boolean,
+  secondsRemaining?: number,
+  timeRemaining?: string,
+): ProviderGameStatus => {
+  const gameStatus: ProviderGameStatus = {
+    status: {
+      detailedState: GAME_DETAILED_STATE.SCHEDULED,
+    },
+    linescore: {
+      currentPeriodOrdinal: '',
+      currentPeriodTimeRemaining: timeRemaining ?? '',
+    },
   };
+
+  switch (gameState) {
+    case NhlStatsGameStateType.Live:
+      gameStatus.status.detailedState = GAME_DETAILED_STATE.INPROGRESS;
+      break;
+    case NhlStatsGameStateType.Future:
+      gameStatus.status.detailedState = GAME_DETAILED_STATE.SCHEDULED;
+      return gameStatus;
+    case NhlStatsGameStateType.Pregame:
+      gameStatus.status.detailedState = GAME_DETAILED_STATE.PREGAME;
+      return gameStatus;
+    case NhlStatsGameStateType.Off:
+      gameStatus.status.detailedState = GAME_DETAILED_STATE.FINAL;
+      return gameStatus;
+    default:
+      return gameStatus;
+  }
+
+  if (!_.isNumber(periodNumber)) {
+    return gameStatus;
+  }
+
+  switch (periodNumber) {
+    case 1:
+      gameStatus.linescore.currentPeriodOrdinal = '1st';
+      break;
+    case 2:
+      gameStatus.linescore.currentPeriodOrdinal = '2nd';
+      break;
+    case 3:
+      gameStatus.linescore.currentPeriodOrdinal = '3rd';
+      break;
+  }
+
+  if (isIntermission) {
+    gameStatus.linescore.currentPeriodOrdinal += ' INT';
+  }
+
+  if (periodNumber < 3) {
+    return gameStatus;
+  }
+
+  if (!_.isNumber(secondsRemaining)) {
+    if (periodNumber > 2) {
+      gameStatus.status.detailedState = GAME_DETAILED_STATE.INPROGRESSCRITICAL;
+    }
+    return gameStatus;
+  }
+  
+  if (isIntermission || periodNumber > 3 || secondsRemaining < 600) {
+    gameStatus.status.detailedState = GAME_DETAILED_STATE.INPROGRESSCRITICAL;
+  }
+
+  return gameStatus;
+}
+
+const getProviderTeam = (team: NhlStatsScheduleGameTeam): ProviderTeam => {
+  const providerTeam = getProviderTeamFromAbbreviation(team.abbrev);
+  if (!providerTeam) {
+    throw new Error(JSON.stringify(team));
+  }
+  return providerTeam;
 }
 
 const processGame = (
-  game: Game
+  game: NhlStatsScoreGame
 ): ProviderGame => {
   const nhltvGame = new NhltvGame(game);
   return nhltvGame;
@@ -79,23 +164,19 @@ export const getNhltvGameList = async (
   config: Config,
   date: luxon.DateTime
 ): Promise<ProviderGame[]> => {
-  const { data: { dates } } = await timeXhrRequest(statsApi, {
-    url: "/schedule",
+  const { data } = await timeXhrRequest(statsApi, {
+    url: "/score/:id",
     params: {
-      startDate: date.toISODate(),
-      endDate: date.toISODate(),
-      expand: "schedule.game.content.media.epg,schedule.teams,schedule.linescore"
+      id: date.toISODate(),
     }
   });
 
-  fs.writeFileSync(gamesFile, JSON.stringify(dates, null, 2));
-  if (dates.length < 1) {
+  fs.writeFileSync(gamesFile, JSON.stringify(data, null, 2));
+  if (!data.games || data.games.length < 1) {
     return [];
   }
 
-  // we only asked for one date so only look at the first one
-  const matchDay = dates[0];
-  return matchDay.games.map(game => {
+  return data.games.map(game => {
     return processGame(game);
   });
 };

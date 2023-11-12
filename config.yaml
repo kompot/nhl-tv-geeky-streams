@@ -20,7 +20,7 @@ playLiveGamesFromStart: true
 
 # set your favourite teams, will highlight them in the list
 # get abbreviations from
-# https://statsapi.web.nhl.com/api/v1/teams
+# https://api-web.nhle.com/v1/schedule-calendar/2023-11-12
 # favouriteTeams: [WSH, PIT, TBL]
 favouriteTeams: []
 

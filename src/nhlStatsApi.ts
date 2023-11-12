@@ -4,31 +4,11 @@
 // PRs are welcome
 
 // "2017-12-22"
-type DateShort = string;
+export type DateShort = string;
 // "2017-12-23T00:00:00Z"
-type DateLong = string;
+export type DateLong = string;
 export type Url = string;
-type Guid = string;
-
-export interface Team {
-  id: number;
-  name: string;
-  abbreviation: string;
-  teamName: string;
-}
-
-interface TeamShort {
-  id: number;
-  name: string;
-  link: Url;
-}
-
-export enum EpgTitle {
-  NHLTV = "NHLTV",
-  AUDIO = "Audio",
-  EXTENDED_HIGHLIGHTS = 'Extended Highlights',
-  RECAP = 'Recap',
-}
+export type Guid = string;
 
 export enum MediaFeedType {
   Home = "HOME",
@@ -41,30 +21,6 @@ export enum MediaFeedType {
   Unknown = "UNKNOWN",
 }
 
-export enum MEDIA_STATE {
-  // live
-  ON = "MEDIA_ON",
-  // future, has not started
-  OFF = "MEDIA_OFF",
-  // has finished
-  ARCHIVE = "MEDIA_ARCHIVE",
-}
-
-export interface EpgItem {
-  guid: Guid;
-  mediaState: MEDIA_STATE;
-  mediaPlaybackId: string;
-  mediaFeedType: MediaFeedType;
-  feedName: string;
-  eventId: string;
-  callLetters: string;
-}
-
-export interface Epg {
-  title: EpgTitle;
-  items: EpgItem[];
-}
-
 export enum GAME_DETAILED_STATE {
   SCHEDULED = 'Scheduled',
   PREGAME = 'Pre-Game',
@@ -75,59 +31,92 @@ export enum GAME_DETAILED_STATE {
   POSTPONED = 'Postponed'
 }
 
-export interface Game {
-  status: {
-    detailedState: GAME_DETAILED_STATE;
-  };
-  linescore: {
-    currentPeriod: number;
-    currentPeriodOrdinal: string;
-    currentPeriodTimeRemaining: string;
-  };
-  gamePk: number;
-  link: Url;
-  content: {
-    link: Url;
-    media?: {
-      epg: Epg[];
-    };
-  };
-  gameDate: DateLong;
-  teams: {
-    home: {
-      team: Team;
-    };
-    away: {
-      team: Team;
-    };
-  };
+export enum NhlStatsGameStateType {
+  Future = "FUT",
+  Live = "LIVE",
+  Off = "OFF",
+  Pregame = "PRE",
 }
 
-export interface MatchDay {
-  date: DateShort;
-  games: Game[];
+export enum NhlStatsPeriodType {
+  Regulation = "REG",
+  Overtime = "OT",
+  Shootout = "SO",
 }
 
-export const NhlStatsApiBaseUrl = "https://statsapi.web.nhl.com/api/v1";
+export enum NhlStatsScheduleStateType {
+  OK = "OK",
+}
+
+export const NhlStatsApiBaseUrl = "https://api-web.nhle.com/v1";
 
 export interface NhlStatsApi {
-  "/teams": {
+  "/schedule/:id": {
     GET: {
-      response: {
-        teams: Team[];
+      params: {
+        id: DateShort;
       };
+      response: NhlStatsScheduleDateResponse;
     };
   };
-  "/schedule": {
+  "/score/:id": {
     GET: {
-      query: {
-        startDate: DateShort | null;
-        endDate: DateShort | null;
-        expand: string;
+      params: {
+        id: DateShort;
       };
-      response: {
-        dates: MatchDay[];
-      };
+      response: NhlStatsScoreDateResponse;
     };
   };
+}
+
+export interface NhlStatsScheduleDateResponse {
+  gameWeek: NhlStatsScheduleGameDay[];
+}
+
+export interface NhlStatsScoreDateResponse {
+  games: NhlStatsScoreGame[];
+}
+
+export interface NhlStatsScheduleGameDay {
+  date: DateShort;
+  dayAbbrev: string;
+  games: NhlStatsScheduleGame[];
+  numberOfGames: number;
+}
+
+export interface NhlStatsScheduleGame {
+  id: number;
+  awayTeam: NhlStatsScheduleGameTeam;
+  homeTeam: NhlStatsScheduleGameTeam;
+  gameOutcome?: NhlStatsScheduleGameOutcome;
+  gameScheduleState: NhlStatsScheduleStateType;
+  gameState: NhlStatsGameStateType;
+  periodDescriptor?: NhlStatsScheduleGamePeriodDescriptor;
+  startTimeUTC: DateLong;
+}
+
+export interface NhlStatsScoreGame extends NhlStatsScheduleGame {
+  clock?: NhlStatsScoreGameClock;
+}
+
+export interface NhlStatsScheduleGameTeam {
+  id: number;
+  abbrev: string;
+}
+
+export interface NhlStatsScheduleGameOutcome {
+  lastPeriodType: NhlStatsPeriodType;
+}
+
+export interface NhlStatsScheduleGamePeriodDescriptor {
+  number: number;
+  periodType: NhlStatsPeriodType;
+}
+
+// during intermission, timeRemaining is not 00:00 because it says how much is remaining in intermission
+export interface NhlStatsScoreGameClock {
+  inIntermission: boolean;
+  running: boolean;
+  secondsRemaining: number;
+  timeRemaining: string;
 }

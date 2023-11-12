@@ -33,7 +33,7 @@
     "yargs": "^17.7.2"
   },
   "resolutions": {
-    "restyped-axios/axios": "^1.4.0",
+    "restyped-axios/axios": "^1.6.1",
     "shelljs/rechoir": "^0.8.0"
   },
   "scripts": {

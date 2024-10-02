@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   nhltv:
     container_name: "nhltv"

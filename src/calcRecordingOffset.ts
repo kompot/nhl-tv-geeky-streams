@@ -44,7 +44,7 @@ export const calcRecordingOffset = (
     }
   });
 
-  let offsetBackToStartRecordingAt = luxon.Duration.fromMillis(0);
+  let offsetBackToStartRecordingAt: luxon.Duration<true> | luxon.Duration<false> = luxon.Duration.fromMillis(0);
   let filenameSuffix: string = "";
   let recordingOffset = 0;
   let recordingStart = Date.now();
@@ -106,7 +106,7 @@ export const calcRecordingOffset = (
   const partConnectionCompensation =
     files.length === 0 ? 0 : luxon.Duration.fromMillis(1 * 1000);
 
-  let durationOffset = luxon.Duration.fromMillis(0);
+  let durationOffset: luxon.Duration<true> | luxon.Duration<false> = luxon.Duration.fromMillis(0);
   if (isLive) {
     durationOffset = offsetBackToStartRecordingAt
       .plus(partConnectionCompensation)

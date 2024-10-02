@@ -524,6 +524,11 @@ const providerTeams: ProviderTeam[] = [
     abbreviation: "SEA",
     nickname: "Kraken",
   },
+  {
+    fullName: "Utah Hockey Club",
+    abbreviation: "UTA",
+    nickname: "Utah",
+  },
 ];
 
 export const getProviderTeamFromAbbreviation = (abbreviation: string): ProviderTeam | null => {
@@ -598,6 +603,9 @@ export const getProviderTeamFromAbbreviation = (abbreviation: string): ProviderT
       return providerTeams[31];
     case "SEA":
       return providerTeams[32];
+    case "UTA":
+    case "UTAH":
+      return providerTeams[33];
     default: return null;
   }
 };
@@ -671,6 +679,8 @@ export const getProviderTeamFromLocation = (location: string): ProviderTeam | nu
       return providerTeams[31];
     case "Seattle":
       return providerTeams[32];
+    case "Utah":
+      return providerTeams[33];
     default: return null;
   }
 };

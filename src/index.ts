@@ -16,9 +16,6 @@ import {
   setLogTimings,
 } from './geekyStreamsApi';
 import {
-  getBallyGameList,
-} from "./ballyProvider";
-import {
   getEspnGameList,
 } from "./espnProvider";
 import {
@@ -167,26 +164,23 @@ const getGameList = async (
   const disableOtherProviders = !config.showOtherProviders && !!config.preferredProvider;
   const disableNhltvCleeng = disableOtherProviders && config.preferredProvider !== 'nhltv';
   const disableEspn = disableOtherProviders && config.preferredProvider !== 'espn';
-  const disableBally = !config.enableExperimentalProviders || disableOtherProviders && config.preferredProvider !== 'bally';
   const disableViaplay = !config.enableExperimentalProviders || disableOtherProviders && config.preferredProvider !== 'viaplay.se';
 
   // Continue using legacy NHL.TV API to get the game's status.
   const nhltvGamesPromise = disableNhltv ? null : getNhltvGameList(config, date);
   const nhltvCleengGamesPromise = disableNhltvCleeng ? null : getNhltvCleengGameList(config, date);
   const espnGamesPromise = disableEspn ? null : getEspnGameList(config, date);
-  const ballyGamesPromise = disableBally ? null : getBallyGameList(config, date);
   const viaplayGamesPromise = disableViaplay ? null : getViaplayGameList(config, date);
   const nhltvGames = await nhltvGamesPromise ?? [];
   const nhltvCleengGames = await nhltvCleengGamesPromise ?? [];
   const espnGames = await espnGamesPromise ?? [];
-  const ballyGames = await ballyGamesPromise ?? [];
   const viaplayGames = await viaplayGamesPromise ?? [];
   
   const gamesById = new Map<string, ProviderGame[]>();
   const games: ProcessedGame[] = [];
   const hiddenGames: ProcessedGame[] = [];
   
-  [...nhltvGames, ...nhltvCleengGames, ...espnGames, ...ballyGames, ...viaplayGames].forEach(providerGame => {
+  [...nhltvGames, ...nhltvCleengGames, ...espnGames, ...viaplayGames].forEach(providerGame => {
     const key = getGameId(providerGame.getGameDateTime(), providerGame.getAwayTeam(), providerGame.getHomeTeam());
 
     let collection = gamesById.get(key);

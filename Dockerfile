@@ -7,8 +7,9 @@ RUN apk --no-cache add \
     libxml2-dev \
     libxslt-dev \
     cmd:pip3 \
-    ffmpeg
-RUN pip3 install --break-system-packages wheel streamlink==6.11.*
+    ffmpeg \
+  && pip3 install --break-system-packages wheel streamlink==6.11.* \
+  && apk --no-cache del build-base
 
 WORKDIR /app/
 COPY package.json /app/

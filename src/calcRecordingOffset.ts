@@ -44,7 +44,7 @@ export const calcRecordingOffset = (
     }
   });
 
-  let offsetBackToStartRecordingAt: luxon.Duration<true> | luxon.Duration<false> = luxon.Duration.fromMillis(0);
+  let offsetBackToStartRecordingAt = luxon.Duration.fromMillis(0);
   let filenameSuffix: string = "";
   let recordingOffset = 0;
   let recordingStart = Date.now();
@@ -63,6 +63,10 @@ export const calcRecordingOffset = (
     const gameStart = gameDateTime;
     recordingStart = Date.now();
     const diff = luxon.DateTime.fromMillis(recordingStart).diff(gameStart);
+    if (!diff.isValid) {
+      throw new Error(`Invalid diff of ${recordingStart} and ${gameStart}: ${JSON.stringify(diff)}`);
+    }
+
     const secondsDiff = _.toInteger(diff.as("seconds"));
     const gameHasStarted =
       luxon.DateTime.local().valueOf() > gameStart.valueOf();
@@ -106,7 +110,7 @@ export const calcRecordingOffset = (
   const partConnectionCompensation =
     files.length === 0 ? 0 : luxon.Duration.fromMillis(1 * 1000);
 
-  let durationOffset: luxon.Duration<true> | luxon.Duration<false> = luxon.Duration.fromMillis(0);
+  let durationOffset = luxon.Duration.fromMillis(0);
   if (isLive) {
     durationOffset = offsetBackToStartRecordingAt
       .plus(partConnectionCompensation)

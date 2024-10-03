@@ -26,6 +26,7 @@ Video will be downloaded to `./video` folder. This location can be customized in
 
 ## With [Docker](https://www.docker.com/community-edition#/download)
 
+- If you have downloaded a new version of this repository, run `docker-compose build --no-cache` to rebuild the docker container with the latest dependencies.
 - Run `docker-compose run --rm nhltv` in the directory where you've unzipped code to.
 - You can also run `docker-compose run --rm nhltv yarn start --help` for info on command line options.
 

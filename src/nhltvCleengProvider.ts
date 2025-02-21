@@ -63,6 +63,9 @@ class NhltvCleengFeed implements ProviderFeed {
     } else if (mediaFeedTypeString === "CA NATIONAL") {
       mediaFeedType = MediaFeedType.National;
       callLetters = "CA";
+    } else if (mediaFeedTypeString === "ESPN") {
+      mediaFeedType = MediaFeedType.National;
+      callLetters = "ESPN";
     } else if (mediaFeedTypeString) {
       mediaFeedType = mediaFeedTypeString as MediaFeedType;
     }

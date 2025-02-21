@@ -529,6 +529,26 @@ const providerTeams: ProviderTeam[] = [
     abbreviation: "UTA",
     nickname: "Utah",
   },
+  {
+    fullName: "Canada",
+    abbreviation: "CAN",
+    nickname: "Canada",
+  },
+  {
+    fullName: "USA",
+    abbreviation: "USA",
+    nickname: "USA",
+  },
+  {
+    fullName: "Finland",
+    abbreviation: "FIN",
+    nickname: "Finland",
+  },
+  {
+    fullName: "Sweden",
+    abbreviation: "SWE",
+    nickname: "Sweden",
+  },
 ];
 
 export const getProviderTeamFromAbbreviation = (abbreviation: string): ProviderTeam | null => {
@@ -606,6 +626,18 @@ export const getProviderTeamFromAbbreviation = (abbreviation: string): ProviderT
     case "UTA":
     case "UTAH":
       return providerTeams[33];
+    case "CAN":
+    case "CANADA":
+      return providerTeams[34];
+    case "US":
+    case "USA":
+      return providerTeams[35];
+    case "FIN":
+    case "FINLAND":
+      return providerTeams[36];
+    case "SWE":
+    case "SWEDEN":
+      return providerTeams[37];
     default: return null;
   }
 };
@@ -681,6 +713,16 @@ export const getProviderTeamFromLocation = (location: string): ProviderTeam | nu
       return providerTeams[32];
     case "Utah":
       return providerTeams[33];
+    case "Canada":
+      return providerTeams[34];
+    case "United States of America":
+    case "United States":
+    case "USA":
+      return providerTeams[35];
+    case "Finland":
+      return providerTeams[36];
+    case "Sweden":
+      return providerTeams[37];
     default: return null;
   }
 };

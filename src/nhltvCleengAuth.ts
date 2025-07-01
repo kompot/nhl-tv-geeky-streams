@@ -105,7 +105,7 @@ class NhltvCleengAuthenticationSession implements INhltvCleengAuthenticationSess
       const authorizationCookie = setCookieValues.map(x => cookie.parse(x))
                                                  .find(ck => ck.token);
 
-      if (!authorizationCookie) {
+      if (!authorizationCookie || !authorizationCookie.token) {
         throw new Error("NHL.TV Authorization cookie was not found.");
       }
 
@@ -136,7 +136,7 @@ class NhltvCleengAuthenticationSession implements INhltvCleengAuthenticationSess
       const authorizationCookie = setCookieValues.map(x => cookie.parse(x))
                                                  .find(ck => ck.token);
 
-      if (authorizationCookie) {
+      if (authorizationCookie && authorizationCookie.token) {
         const sessionData: NhltvCleengAuthenticationSessionData = {
           token: authorizationCookie.token,
         };

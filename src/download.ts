@@ -10,6 +10,7 @@ import {
 } from './geekyStreamsApi';
 
 const processName = "streamlink";
+const progressMarker = "[download]";
 
 export const download = (
   filename: string,
@@ -45,32 +46,39 @@ export const download = (
         recordingOffset.recordingOffset
       );
     }
-    console.log(`${processName}: ${data}`);
+    
+    handleDownloadOutput(data as Buffer);
   });
 
-  const progressMarker = "[download]";
-
   streamStart.stderr.on("data", data => {
-    const dataAsString = (data as Buffer).toString();
-    if (dataAsString.indexOf(progressMarker) === 1) {
-      readline.clearLine(process.stdout, 0);
-      readline.cursorTo(process.stdout, 0);
-      process.stderr.write(
-        // these magic substringing is based on streamlink version 0.14.2 output
-        // and may/will definitely break for outdated/future streamlink versions
-        dataAsString.substring(
-          dataAsString.lastIndexOf("]") + 2,
-          dataAsString.lastIndexOf(")") + 1
-        )
-      );
-    } else if (/^\s+$/.test(dataAsString)) {
-      // ignore
-    } else {
-      console.log(`\n${processName}`, dataAsString);
-    }
+    handleDownloadOutput(data as Buffer);
   });
 
   streamStart.on("close", code => {
     console.log(`${processName} exited with code ${code}`);
   });
 };
+
+const handleDownloadOutput = (
+  data: Buffer
+) => {
+  const dataAsString = (data as Buffer).toString();
+  const progressMarkerIndex = dataAsString.indexOf(progressMarker);
+  if (progressMarkerIndex > -1 && progressMarkerIndex < 2) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+
+    // these magic substringing is based on streamlink version 0.14.2 output
+    // and may/will definitely break for outdated/future streamlink versions
+    const progressString = dataAsString.substring(
+      dataAsString.lastIndexOf("]") + 2,
+      dataAsString.lastIndexOf(")") + 1
+    );
+      
+    process.stderr.write(progressString);
+  } else if (/^\s+$/.test(dataAsString)) {
+    // ignore
+  } else {
+    console.log(`\n${processName} ${dataAsString}`);
+  }
+}

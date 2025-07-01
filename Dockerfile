@@ -1,4 +1,4 @@
-FROM node:22.9-alpine3.20
+FROM node:24.3-alpine3.22
 
 RUN apk --no-cache add \
     build-base \
@@ -8,7 +8,7 @@ RUN apk --no-cache add \
     libxslt-dev \
     cmd:pip3 \
     ffmpeg \
-  && pip3 install --break-system-packages wheel streamlink==6.11.* \
+  && pip3 install --break-system-packages wheel streamlink==7.4.* \
   && apk --no-cache del build-base
 
 WORKDIR /app/
